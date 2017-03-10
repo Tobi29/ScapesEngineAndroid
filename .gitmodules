@@ -1,0 +1,4 @@
+[submodule "OpenAL/ext/openal-soft"]
+    path = OpenAL/ext/openal-soft
+    url = https://github.com/Tobi29/openal-soft
+    branch = master
