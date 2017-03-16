@@ -22,6 +22,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.graphics.Typeface
+import android.opengl.GLSurfaceView
 import android.os.Binder
 import android.os.Handler
 import android.os.IBinder
@@ -46,9 +47,9 @@ import org.tobi29.scapes.engine.utils.EventDispatcher
 import org.tobi29.scapes.engine.utils.io.ReadableByteStream
 import org.tobi29.scapes.engine.utils.io.filesystem.FilePath
 import org.tobi29.scapes.engine.utils.io.filesystem.path
-import org.tobi29.scapes.engine.utils.math.round
 import java.io.File
 import java.io.IOException
+import java.lang.ref.WeakReference
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -60,15 +61,12 @@ abstract class ScapesEngineService : Service(), Container, ControllerTouch {
     private var gl: GL? = null
     private var sound: SoundSystem? = null
     private var activity: ScapesEngineActivity? = null
-    private var width = 0
-    private var height = 0
+    private var widthSize = 0
+    private var heightSize = 0
     private var widthResolution = 0
     private var heightResolution = 0
     private var containerResized = false
-    internal val density: Double
-        get() {
-            return 3.0
-        }
+    private var lastView: WeakReference<GLSurfaceView>? = null
 
     fun activity(activity: ScapesEngineActivity) {
         if (this.activity != null) {
@@ -78,18 +76,24 @@ abstract class ScapesEngineService : Service(), Container, ControllerTouch {
         this.activity = activity
     }
 
-    fun setResolution(width: Int,
-                      height: Int) {
-        val density = density
-        this.width = round(width / density)
-        this.height = round(height / density)
-        this.widthResolution = width
-        this.heightResolution = height
+    fun setResolution(widthSize: Int,
+                      heightSize: Int,
+                      widthResolution: Int,
+                      heightResolution: Int) {
+        this.widthSize = widthSize
+        this.heightSize = heightSize
+        this.widthResolution = widthResolution
+        this.heightResolution = heightResolution
         containerResized = true
     }
 
-    fun render(delta: Double) {
+    fun render(delta: Double,
+               view: GLSurfaceView) {
         engine?.let {
+            if (view != lastView?.get()) {
+                lastView = WeakReference(view)
+                engine?.graphics?.reset()
+            }
             it.graphics.render(delta)
             containerResized = false
         }
@@ -148,11 +152,11 @@ abstract class ScapesEngineService : Service(), Container, ControllerTouch {
     }
 
     override fun containerWidth(): Int {
-        return width
+        return widthSize
     }
 
     override fun containerHeight(): Int {
-        return height
+        return heightSize
     }
 
     override fun contentWidth(): Int {
@@ -261,22 +265,26 @@ abstract class ScapesEngineService : Service(), Container, ControllerTouch {
     override fun message(messageType: Container.MessageType,
                          title: String,
                          message: String) {
+        handler.post {
+            val activity = this.activity ?: return@post
+            val context = activity.view?.context
+            AlertDialog.Builder(context).setTitle(title).setMessage(
+                    message).setPositiveButton("OK") { _, _ -> }.create().show()
+        }
     }
 
     override fun dialog(title: String,
                         text: GuiController.TextFieldData,
                         multiline: Boolean) {
-        val activity = this.activity ?: return
-        val context = activity.connection.view?.context
         handler.post {
+            val activity = this.activity ?: return@post
+            val context = activity.view?.context
             val editText = EditText(context)
             editText.setText(text.text.toString())
-            val dialog = AlertDialog.Builder(context).setView(
-                    editText).setPositiveButton("Done"
-            ) { dialog, which ->
+            val dialog = AlertDialog.Builder(context).setTitle(title).setView(
+                    editText).setPositiveButton("Done") { _, _ ->
                 if (text.text.isNotEmpty()) {
-                    text.text.delete(0,
-                            Int.MAX_VALUE)
+                    text.text.delete(0, Int.MAX_VALUE)
                 }
                 text.text.append(editText.text)
                 text.cursor = text.text.length
@@ -293,7 +301,7 @@ abstract class ScapesEngineService : Service(), Container, ControllerTouch {
     }
 
     override fun fingers(): Sequence<ControllerTouch.Tracker> {
-        val view = activity?.connection?.view ?: return emptySequence()
+        val view = activity?.view ?: return emptySequence()
         return view.fingers.values.asSequence()
     }
 
@@ -304,9 +312,7 @@ abstract class ScapesEngineService : Service(), Container, ControllerTouch {
     }
 
     inner class ScapesBinder : Binder() {
-        fun get(): ScapesEngineService {
-            return this@ScapesEngineService
-        }
+        val service = this@ScapesEngineService
     }
 
     companion object : KLogging()

@@ -22,11 +22,12 @@ import android.view.MotionEvent
 import org.tobi29.scapes.engine.input.ControllerTouch
 import java.util.concurrent.ConcurrentHashMap
 
-class ScapesEngineView(val service: ScapesEngineService,
-                       activity: ScapesEngineActivity,
+class ScapesEngineView(activity: ScapesEngineActivity,
                        attrs: AttributeSet? = null) : GLSurfaceView(
         activity, attrs) {
     val fingers: MutableMap<Int, ControllerTouch.Tracker> = ConcurrentHashMap()
+    // TODO: Implement proper density support
+    val density get() = 3.0
 
     init {
         isFocusable = true
@@ -36,7 +37,7 @@ class ScapesEngineView(val service: ScapesEngineService,
 
     override fun onTouchEvent(e: MotionEvent): Boolean {
         super.onTouchEvent(e)
-        val density = service.density
+        val density = density
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                 val index = e.actionIndex

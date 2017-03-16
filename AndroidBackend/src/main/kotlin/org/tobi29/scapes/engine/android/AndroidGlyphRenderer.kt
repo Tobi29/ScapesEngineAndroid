@@ -26,6 +26,7 @@ import java.nio.ByteBuffer
 
 class AndroidGlyphRenderer(private val typeface: Typeface,
                            size: Int) : GlyphRenderer {
+    private val size = size.toDouble()
     private val tiles: Int
     private val pageTiles: Int
     private val pageTileBits: Int
@@ -35,10 +36,8 @@ class AndroidGlyphRenderer(private val typeface: Typeface,
     private val renderX: Int
     private val renderY: Int
     private val tileSize: Double
-    private val size: Double
 
     init {
-        this.size = size.toDouble()
         val tileBits = if (size < 16) {
             4
         } else if (size < 32) {

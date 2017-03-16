@@ -17,30 +17,78 @@
 package org.tobi29.scapes.engine.android
 
 import android.app.Activity
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.net.Uri
+import android.opengl.GLSurfaceView
 import android.os.Bundle
 import android.os.Handler
+import android.os.IBinder
 import android.provider.OpenableColumns
 import mu.KLogging
 import org.tobi29.scapes.engine.gui.GuiAction
 import org.tobi29.scapes.engine.input.FileType
+import org.tobi29.scapes.engine.utils.Sync
 import org.tobi29.scapes.engine.utils.io.BufferedReadChannelStream
 import org.tobi29.scapes.engine.utils.io.ReadableByteStream
+import org.tobi29.scapes.engine.utils.math.round
 import java.io.IOException
 import java.nio.channels.Channels
+import javax.microedition.khronos.egl.EGLConfig
+import javax.microedition.khronos.opengles.GL10
 
 abstract class ScapesEngineActivity : Activity() {
+    private val sync = Sync(60.0, 5000000000L, false, "Rendering")
     private val handler = Handler()
     private var serviceIntent: Intent? = null
-    private var fileConsumer: Function2<String, ReadableByteStream, Unit>? = null
-    internal val connection = ScapesEngineConnection(this)
+    private var fileConsumer: ((String, ReadableByteStream) -> Unit)? = null
+    private var widthSize = 0
+    private var heightSize = 0
+    private var widthResolution = 0
+    private var heightResolution = 0
+    private var containerResized = false
+    private val connection = ScapesEngineConnection()
+    internal var view: ScapesEngineView? = null
 
     protected abstract fun service(): Class<out ScapesEngineService>
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        view = ScapesEngineView(this).apply {
+            setRenderer(object : GLSurfaceView.Renderer {
+                override fun onSurfaceCreated(gl: GL10,
+                                              config: EGLConfig) {
+                    connection.engine?.engine?.graphics?.reset()
+                    sync.init()
+                }
+
+                override fun onSurfaceChanged(gl: GL10,
+                                              width: Int,
+                                              height: Int) {
+                    val density = density
+                    widthSize = round(width / density)
+                    heightSize = round(height / density)
+                    widthResolution = width
+                    heightResolution = height
+                    containerResized = true
+                }
+
+                override fun onDrawFrame(gl: GL10) {
+                    connection.engine?.run {
+                        if (containerResized) {
+                            setResolution(widthSize, heightSize,
+                                    widthResolution, heightResolution)
+                            containerResized = false
+                        }
+                        render(sync.delta(), this@apply)
+                    }
+                    sync.tick()
+                }
+            })
+        }
+        setContentView(view)
         serviceIntent = Intent(this, service())
         startService(serviceIntent)
         bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE)
@@ -48,24 +96,25 @@ abstract class ScapesEngineActivity : Activity() {
 
     public override fun onResume() {
         super.onResume()
-        connection.view?.onResume()
+        view?.onResume()
         assert(serviceIntent != null)
         bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE)
     }
 
     public override fun onPause() {
         super.onPause()
-        connection.view?.onPause()
+        view?.onPause()
         unbindService(connection)
     }
 
     override fun onBackPressed() {
-        connection.view?.service?.engine?.guiStack?.fireAction(GuiAction.BACK)
+        connection.engine?.engine?.guiStack?.fireAction(GuiAction.BACK)
     }
 
     override fun onDestroy() {
         super.onDestroy()
         serviceIntent = null
+        view = null
     }
 
     override fun onActivityResult(requestCode: Int,
@@ -131,6 +180,22 @@ abstract class ScapesEngineActivity : Activity() {
             }
             fileConsumer = result
             startActivityForResult(intent, 10)
+        }
+    }
+
+    private inner class ScapesEngineConnection : ServiceConnection {
+        internal var engine: ScapesEngineService? = null
+
+        override fun onServiceConnected(name: ComponentName,
+                                        service: IBinder) {
+            engine = (service as ScapesEngineService.ScapesBinder).service.apply {
+                activity(this@ScapesEngineActivity)
+            }
+        }
+
+        override fun onServiceDisconnected(name: ComponentName) {
+            setContentView(null)
+            engine = null
         }
     }
 
