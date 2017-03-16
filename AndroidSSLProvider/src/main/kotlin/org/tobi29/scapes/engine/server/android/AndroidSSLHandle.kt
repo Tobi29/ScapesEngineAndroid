@@ -34,19 +34,17 @@ class AndroidSSLHandle(keyManagers: Array<KeyManager>?,
         try {
             context = SSLContext.getInstance("TLSv1.2")
             if (feedbackPredicate != null) {
-                context.init(keyManagers, DUMMY_TRUST_MANAGERS,
-                        SecureRandom())
+                context.init(keyManagers, DUMMY_TRUST_MANAGERS, SecureRandom())
                 this.feedbackPredicate = feedbackPredicate
             } else {
                 context.init(keyManagers, null, SecureRandom())
-                this.feedbackPredicate = { certificates -> false }
+                this.feedbackPredicate = { false }
             }
         } catch (e: NoSuchAlgorithmException) {
             throw IOException(e)
         } catch (e: KeyManagementException) {
             throw IOException(e)
         }
-
     }
 
     override fun newEngine(address: RemoteAddress): SSLEngine {
@@ -74,8 +72,7 @@ class AndroidSSLHandle(keyManagers: Array<KeyManager>?,
             for (trustManager in trustManagers) {
                 val authType = StringBuilder(12)
                 var first = true
-                for (str in session.cipherSuite.split(
-                        "_".toRegex()).dropLastWhile(
+                for (str in session.cipherSuite.split('_').dropLastWhile(
                         String::isEmpty).toTypedArray()) {
                     if ("WITH" == str) {
                         break
