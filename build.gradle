@@ -15,7 +15,7 @@
  */
 
 buildscript {
-    def kotlinVersion = "1.1.0"
+    def kotlinVersion = "1.1.1"
     def dokkaVersion = "0.9.13"
     def androidBuildVersion = "2.3.0"
     def androidMavenVersion = "1.5"
@@ -23,6 +23,7 @@ buildscript {
     repositories {
         jcenter()
     }
+
     dependencies {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
         classpath "org.jetbrains.dokka:dokka-gradle-plugin:$dokkaVersion"
@@ -52,22 +53,21 @@ allprojects {
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = "3.4"
+    gradleVersion = "3.4.1"
     distributionUrl =
             "https://services.gradle.org/distributions/gradle-${gradleVersion}-all.zip"
 }
 
 ext {
-    kotlinVersion = "1.1.0"
-    kotlinLoggingVersion = "1.4.2"
-    slf4jVersion = "1.7.23"
+    kotlinVersion = "1.1.1"
+    kotlinLoggingVersion = "1.4.3"
+    slf4jVersion = "1.7.24"
     spekVersion = "f0935817fa"
-    scapesEngineVersion = "80b7a570b0"
+    scapesEngineVersion = "5f3f230bfd"
 
     kotlinLogging = "io.github.microutils:kotlin-logging:$kotlinLoggingVersion"
     slf4jAPI = "org.slf4j:slf4j-api:$slf4jVersion"
     kotlinSTD = "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
-    kotlinTest = "org.jetbrains.kotlin:kotlin-test:$kotlinVersion"
     spekAPI = "com.github.JetBrains.spek:spek-api:$spekVersion"
     spekEngine =
             "com.github.JetBrains.spek:spek-junit-platform-engine:$spekVersion"
