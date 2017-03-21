@@ -16,15 +16,17 @@
 
 package org.tobi29.scapes.engine.android
 
+import android.content.Context
 import android.opengl.GLSurfaceView
 import android.util.AttributeSet
 import android.view.MotionEvent
 import org.tobi29.scapes.engine.input.ControllerTouch
 import java.util.concurrent.ConcurrentHashMap
 
-class ScapesEngineView(activity: ScapesEngineActivity,
-                       attrs: AttributeSet? = null) : GLSurfaceView(
-        activity, attrs) {
+class ScapesEngineView(
+        context: Context,
+        attrs: AttributeSet? = null
+) : GLSurfaceView(context, attrs) {
     val fingers: MutableMap<Int, ControllerTouch.Tracker> = ConcurrentHashMap()
     // TODO: Implement proper density support
     val density get() = 3.0
