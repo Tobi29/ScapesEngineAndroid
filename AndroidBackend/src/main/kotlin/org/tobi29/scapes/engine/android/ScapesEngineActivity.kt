@@ -90,21 +90,17 @@ abstract class ScapesEngineActivity : Activity() {
         }
         setContentView(view)
         serviceIntent = Intent(this, service())
-        startService(serviceIntent)
         bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE)
     }
 
     public override fun onResume() {
         super.onResume()
         view?.onResume()
-        assert(serviceIntent != null)
-        bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE)
     }
 
     public override fun onPause() {
         super.onPause()
         view?.onPause()
-        unbindService(connection)
     }
 
     override fun onBackPressed() {
@@ -113,6 +109,7 @@ abstract class ScapesEngineActivity : Activity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        unbindService(connection)
         serviceIntent = null
         view = null
     }
