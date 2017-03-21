@@ -188,8 +188,12 @@ abstract class ScapesEngineActivity : Activity() {
 
         override fun onServiceConnected(name: ComponentName,
                                         service: IBinder) {
-            engine = (service as ScapesEngineService.ScapesBinder).service.apply {
-                activity(this@ScapesEngineActivity)
+            val engine = (service as ScapesEngineService.ScapesBinder).service
+            if (engine == null) {
+                finishAndRemoveTask()
+            } else {
+                engine.activity(this@ScapesEngineActivity)
+                this.engine = engine
             }
         }
 

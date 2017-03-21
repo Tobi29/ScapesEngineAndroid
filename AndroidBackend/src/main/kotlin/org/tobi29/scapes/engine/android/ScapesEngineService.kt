@@ -52,11 +52,14 @@ import java.io.IOException
 import java.lang.ref.WeakReference
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.atomic.AtomicBoolean
 
 abstract class ScapesEngineService : Service(), Container, ControllerTouch {
     override val events = EventDispatcher()
     internal var engine: ScapesEngine? = null
         private set
+    private val done = AtomicBoolean()
+    private var startID: Int? = null
     private val handler = Handler()
     private var gl: GL? = null
     private var sound: SoundSystem? = null
@@ -105,25 +108,31 @@ abstract class ScapesEngineService : Service(), Container, ControllerTouch {
         super.onCreate()
         val notification = Notification.Builder(this).build()
         startForeground(1, notification)
-        val home = path(filesDir.toString())
-        val cache = path(cacheDir.toString())
-        val game = onCreateEngine(home)
-        ScapesEngine(game, { p1 ->
-            engine = p1
-            gl = GLAndroidGL(p1, this@ScapesEngineService)
-            sound = OpenALSoundSystem(p1, AndroidOpenAL(), 16, 50.0)
-            this@ScapesEngineService
-        }, home, cache, true).start()
     }
 
     override fun onStartCommand(intent: Intent,
                                 flags: Int,
                                 startId: Int): Int {
+        if (startID != null) {
+            throw IllegalStateException("Service can only be started once")
+        }
+        val home = path(filesDir.toString())
+        val cache = path(cacheDir.toString())
+        val game = onCreateEngine(home)
+        val engine = ScapesEngine(game, { p1 ->
+            engine = p1
+            gl = GLAndroidGL(p1, this@ScapesEngineService)
+            sound = OpenALSoundSystem(p1, AndroidOpenAL(), 16, 50.0)
+            this@ScapesEngineService
+        }, home, cache, true)
+        startID = startId
+        engine.start()
         return Service.START_NOT_STICKY
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        done.set(true)
         activity?.finishAndRemoveTask()
         engine?.dispose()
         activity = null
@@ -239,8 +248,11 @@ abstract class ScapesEngineService : Service(), Container, ControllerTouch {
     }
 
     override fun stop() {
-        logger.info { "Stopping app..." }
-        handler.post { stopSelf() }
+        done.set(true)
+        handler.post {
+            activity?.finishAndRemoveTask()
+            stopSelf()
+        }
     }
 
     override fun clipboardCopy(value: String) {
@@ -312,7 +324,7 @@ abstract class ScapesEngineService : Service(), Container, ControllerTouch {
     }
 
     inner class ScapesBinder : Binder() {
-        val service = this@ScapesEngineService
+        val service = if (done.get()) null else this@ScapesEngineService
     }
 
     companion object : KLogging()
