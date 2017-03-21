@@ -59,7 +59,6 @@ abstract class ScapesEngineService : Service(), Container, ControllerTouch {
     internal var engine: ScapesEngine? = null
         private set
     private val done = AtomicBoolean()
-    private var startID: Int? = null
     private val handler = Handler()
     private var gl: GL? = null
     private var sound: SoundSystem? = null
@@ -108,14 +107,6 @@ abstract class ScapesEngineService : Service(), Container, ControllerTouch {
         super.onCreate()
         val notification = Notification.Builder(this).build()
         startForeground(1, notification)
-    }
-
-    override fun onStartCommand(intent: Intent,
-                                flags: Int,
-                                startId: Int): Int {
-        if (startID != null) {
-            throw IllegalStateException("Service can only be started once")
-        }
         val home = path(filesDir.toString())
         val cache = path(cacheDir.toString())
         val game = onCreateEngine(home)
@@ -125,9 +116,7 @@ abstract class ScapesEngineService : Service(), Container, ControllerTouch {
             sound = OpenALSoundSystem(p1, AndroidOpenAL(), 16, 50.0)
             this@ScapesEngineService
         }, home, cache, true)
-        startID = startId
         engine.start()
-        return Service.START_NOT_STICKY
     }
 
     override fun onDestroy() {
