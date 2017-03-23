@@ -72,7 +72,7 @@ internal object GLUtils : KLogging() {
                 ByteOrder.nativeOrder()).asIntBuffer()
         GLES20.glGetShaderiv(id, GLES20.GL_INFO_LOG_LENGTH, lengthBuffer)
         if (lengthBuffer.get(0) > 1) {
-            val out = GLES20.glGetProgramInfoLog(id)
+            val out = GLES20.glGetShaderInfoLog(id)
             logger.info { "Shader log: $out" }
         }
     }
