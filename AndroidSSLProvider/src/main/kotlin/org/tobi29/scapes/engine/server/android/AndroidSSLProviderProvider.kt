@@ -24,7 +24,5 @@ class AndroidSSLProviderProvider : SSLProviderProvider {
         return true
     }
 
-    override fun implementation(): SSLProviderImpl {
-        return AndroidSSLProviderImpl()
-    }
+    override fun implementation(): SSLProviderImpl = AndroidSSLProviderImpl
 }

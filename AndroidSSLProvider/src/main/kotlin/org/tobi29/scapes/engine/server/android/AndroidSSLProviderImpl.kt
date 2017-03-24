@@ -20,7 +20,7 @@ import org.tobi29.scapes.engine.server.SSLProviderImpl
 import java.security.cert.X509Certificate
 import javax.net.ssl.KeyManager
 
-class AndroidSSLProviderImpl : SSLProviderImpl {
+object AndroidSSLProviderImpl : SSLProviderImpl {
     override fun sslHandle(keyManagers: Array<KeyManager>?,
                            feedbackPredicate: ((Array<X509Certificate>) -> Boolean)?): SSLHandle {
         return AndroidSSLHandle(keyManagers, feedbackPredicate)
