@@ -33,16 +33,16 @@ import org.tobi29.scapes.engine.Container
 import org.tobi29.scapes.engine.Game
 import org.tobi29.scapes.engine.ScapesEngine
 import org.tobi29.scapes.engine.android.openal.AndroidOpenAL
-import org.tobi29.scapes.engine.android.opengles.GLAndroidGL
+import org.tobi29.scapes.engine.android.opengles.GLAndroidGLES
+import org.tobi29.scapes.engine.android.opengles.GOSAndroidGLES
 import org.tobi29.scapes.engine.backends.openal.openal.OpenALSoundSystem
 import org.tobi29.scapes.engine.graphics.Font
-import org.tobi29.scapes.engine.graphics.GL
+import org.tobi29.scapes.engine.gui.GuiAction
 import org.tobi29.scapes.engine.gui.GuiController
 import org.tobi29.scapes.engine.input.ControllerDefault
 import org.tobi29.scapes.engine.input.ControllerJoystick
 import org.tobi29.scapes.engine.input.ControllerTouch
 import org.tobi29.scapes.engine.input.FileType
-import org.tobi29.scapes.engine.sound.SoundSystem
 import org.tobi29.scapes.engine.utils.EventDispatcher
 import org.tobi29.scapes.engine.utils.io.ReadableByteStream
 import org.tobi29.scapes.engine.utils.io.filesystem.FilePath
@@ -54,20 +54,11 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicBoolean
 
-abstract class ScapesEngineService : Service(), Container, ControllerTouch {
-    override val events = EventDispatcher()
-    internal var engine: ScapesEngine? = null
-        private set
+abstract class ScapesEngineService : Service() {
+    private var container: AndroidContainer? = null
     private val done = AtomicBoolean()
     private val handler = Handler()
-    private var gl: GL? = null
-    private var sound: SoundSystem? = null
     private var activity: ScapesEngineActivity? = null
-    private var widthSize = 0
-    private var heightSize = 0
-    private var widthResolution = 0
-    private var heightResolution = 0
-    private var containerResized = false
     private var lastView: WeakReference<GLSurfaceView>? = null
 
     fun activity(activity: ScapesEngineActivity) {
@@ -78,27 +69,19 @@ abstract class ScapesEngineService : Service(), Container, ControllerTouch {
         this.activity = activity
     }
 
-    fun setResolution(widthSize: Int,
-                      heightSize: Int,
-                      widthResolution: Int,
-                      heightResolution: Int) {
-        this.widthSize = widthSize
-        this.heightSize = heightSize
-        this.widthResolution = widthResolution
-        this.heightResolution = heightResolution
-        containerResized = true
+    fun resetGraphics() {
+        container?.engine?.graphics?.reset()
     }
 
     fun render(delta: Double,
-               view: GLSurfaceView) {
-        engine?.let {
-            if (view != lastView?.get()) {
-                lastView = WeakReference(view)
-                engine?.graphics?.reset()
-            }
-            it.graphics.render(delta)
-            containerResized = false
-        }
+               view: GLSurfaceView,
+               width: Int,
+               height: Int) {
+        container?.render(delta, view, width, height)
+    }
+
+    fun onBackPressed() {
+        container?.engine?.guiStack?.fireAction(GuiAction.BACK)
     }
 
     abstract fun onCreateEngine(home: FilePath): (ScapesEngine) -> Game
@@ -111,10 +94,7 @@ abstract class ScapesEngineService : Service(), Container, ControllerTouch {
         val cache = path(cacheDir.toString())
         val game = onCreateEngine(home)
         val engine = ScapesEngine(game, { p1 ->
-            engine = p1
-            gl = GLAndroidGL(p1, this@ScapesEngineService)
-            sound = OpenALSoundSystem(p1, AndroidOpenAL(), 16, 50.0)
-            this@ScapesEngineService
+            AndroidContainer(p1).also { container = it }
         }, home, cache, true)
         engine.start()
     }
@@ -123,11 +103,9 @@ abstract class ScapesEngineService : Service(), Container, ControllerTouch {
         super.onDestroy()
         done.set(true)
         activity?.finishAndRemoveTask()
-        engine?.dispose()
+        container?.engine?.dispose()
         activity = null
-        gl = null
-        engine = null
-        sound = null
+        container = null
         logger.info { "Service destroyed" }
     }
 
@@ -145,171 +123,165 @@ abstract class ScapesEngineService : Service(), Container, ControllerTouch {
         stopSelf()
     }
 
-    override fun formFactor(): Container.FormFactor {
-        return Container.FormFactor.PHONE
-    }
+    inner class AndroidContainer(
+            internal val engine: ScapesEngine
+    ) : Container, ControllerTouch {
+        override val gos = GOSAndroidGLES(engine)
+        override val sounds = OpenALSoundSystem(engine, AndroidOpenAL(), 16,
+                50.0)
+        override val events = EventDispatcher()
+        override val formFactor = Container.FormFactor.PHONE
+        override val containerWidth get() = activity?.view?.containerWidth ?: 1
+        override val containerHeight get() = activity?.view?.containerHeight ?: 1
+        private val gl = GLAndroidGLES(gos)
 
-    override fun containerWidth(): Int {
-        return widthSize
-    }
-
-    override fun containerHeight(): Int {
-        return heightSize
-    }
-
-    override fun contentWidth(): Int {
-        return widthResolution
-    }
-
-    override fun contentHeight(): Int {
-        return heightResolution
-    }
-
-    override fun contentResized(): Boolean {
-        return containerResized
-    }
-
-    override fun updateContainer() {
-    }
-
-    override fun update(delta: Double) {
-        poll()
-    }
-
-    override fun gl(): GL {
-        return gl ?: throw IllegalStateException("Service disposed")
-    }
-
-    override fun sound(): SoundSystem {
-        return sound ?: throw IllegalStateException("Service disposed")
-    }
-
-    override fun controller(): ControllerDefault? {
-        return null
-    }
-
-    override fun joysticks(): Collection<ControllerJoystick> {
-        return emptyList()
-    }
-
-    override fun joysticksChanged(): Boolean {
-        return false
-    }
-
-    override fun touch(): ControllerTouch? {
-        return this
-    }
-
-    override fun loadFont(asset: String): Font? {
-        val engine = engine ?: throw IllegalStateException("Service disposed")
-        try {
-            var font = engine.files[asset + ".otf"].get()
-            if (!font.exists()) {
-                font = engine.files[asset + ".ttf"].get()
+        fun render(delta: Double,
+                   view: GLSurfaceView,
+                   width: Int,
+                   height: Int) {
+            if (view != lastView?.get()) {
+                lastView = WeakReference(view)
+                engine.graphics.reset()
             }
-            var typeface: Typeface? = null
-            while (typeface == null) {
-                val file = engine.fileCache.retrieve(
-                        engine.fileCache.store(font, "AndroidTypeface"))
-                try {
-                    if (file != null) {
-                        typeface = Typeface.createFromFile(File(file.toUri()))
+            engine.graphics.render(gl, delta, width, height)
+        }
+
+        override fun updateContainer() {
+        }
+
+        override fun update(delta: Double) {
+            poll()
+        }
+
+        override fun controller(): ControllerDefault? {
+            return null
+        }
+
+        override fun joysticks(): Collection<ControllerJoystick> {
+            return emptyList()
+        }
+
+        override fun joysticksChanged(): Boolean {
+            return false
+        }
+
+        override fun touch(): ControllerTouch? {
+            return this
+        }
+
+        override fun loadFont(asset: String): Font? {
+            try {
+                var font = engine.files[asset + ".otf"].get()
+                if (!font.exists()) {
+                    font = engine.files[asset + ".ttf"].get()
+                }
+                var typeface: Typeface? = null
+                while (typeface == null) {
+                    val file = engine.fileCache.retrieve(
+                            engine.fileCache.store(font, "AndroidTypeface"))
+                    try {
+                        if (file != null) {
+                            typeface = Typeface.createFromFile(
+                                    File(file.toUri()))
+                        }
+                    } catch (e: RuntimeException) {
+                        logger.warn(e) { "Failed to load typeface from cache" }
                     }
-                } catch (e: RuntimeException) {
-                    logger.warn(e) { "Failed to load typeface from cache" }
                 }
+                return AndroidFont(typeface)
+            } catch (e: IOException) {
+                logger.error(e) { "Failed to load font" }
             }
-            return AndroidFont(typeface)
-        } catch (e: IOException) {
-            logger.error(e) { "Failed to load font" }
+            return null
         }
-        return null
-    }
 
-    override fun allocate(capacity: Int): ByteBuffer {
-        return ByteBuffer.allocateDirect(capacity).order(
-                ByteOrder.nativeOrder())
-    }
-
-    override fun run() {
-        throw UnsupportedOperationException(
-                "Android backend should be called from GLThread loop")
-    }
-
-    override fun stop() {
-        done.set(true)
-        handler.post {
-            activity?.finishAndRemoveTask()
-            stopSelf()
+        override fun allocate(capacity: Int): ByteBuffer {
+            return ByteBuffer.allocateDirect(capacity).order(
+                    ByteOrder.nativeOrder())
         }
-    }
 
-    override fun clipboardCopy(value: String) {
-    }
-
-    override fun clipboardPaste(): String {
-        return ""
-    }
-
-    override fun openFileDialog(type: FileType,
-                                title: String,
-                                multiple: Boolean,
-                                result: Function2<String, ReadableByteStream, Unit>) {
-        activity?.openFileDialog(type, multiple, result)
-    }
-
-    override fun saveFileDialog(extensions: Array<Pair<String, String>>,
-                                title: String): FilePath? {
-        return null
-    }
-
-    override fun message(messageType: Container.MessageType,
-                         title: String,
-                         message: String) {
-        handler.post {
-            val activity = this.activity ?: return@post
-            val context = activity.view?.context
-            AlertDialog.Builder(context).setTitle(title).setMessage(
-                    message).setPositiveButton("OK") { _, _ -> }.create().show()
+        override fun run() {
+            throw UnsupportedOperationException(
+                    "Android backend should be called from GLThread loop")
         }
-    }
 
-    override fun dialog(title: String,
-                        text: GuiController.TextFieldData,
-                        multiline: Boolean) {
-        handler.post {
-            val activity = this.activity ?: return@post
-            val context = activity.view?.context
-            val editText = EditText(context)
-            editText.setText(text.text.toString())
-            val dialog = AlertDialog.Builder(context).setTitle(title).setView(
-                    editText).setPositiveButton("Done") { _, _ ->
-                if (text.text.isNotEmpty()) {
-                    text.text.delete(0, Int.MAX_VALUE)
-                }
-                text.text.append(editText.text)
-                text.cursor = text.text.length
-            }.create()
-            dialog.show()
-            editText.requestFocus()
-            val imm = editText.context.getSystemService(
-                    Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            imm.showSoftInput(editText, InputMethodManager.SHOW_FORCED)
+        override fun stop() {
+            done.set(true)
+            handler.post {
+                activity?.finishAndRemoveTask()
+                stopSelf()
+            }
         }
-    }
 
-    override fun openFile(path: FilePath) {
-    }
+        override fun clipboardCopy(value: String) {
+        }
 
-    override fun fingers(): Sequence<ControllerTouch.Tracker> {
-        val view = activity?.view ?: return emptySequence()
-        return view.fingers.values.asSequence()
-    }
+        override fun clipboardPaste(): String {
+            return ""
+        }
 
-    override val isActive: Boolean
-        get() = activity != null
+        override fun openFileDialog(type: FileType,
+                                    title: String,
+                                    multiple: Boolean,
+                                    result: Function2<String, ReadableByteStream, Unit>) {
+            activity?.openFileDialog(type, multiple, result)
+        }
 
-    override fun poll() {
+        override fun saveFileDialog(extensions: Array<Pair<String, String>>,
+                                    title: String): FilePath? {
+            return null
+        }
+
+        override fun message(messageType: Container.MessageType,
+                             title: String,
+                             message: String) {
+            handler.post {
+                val activity = this@ScapesEngineService.activity ?: return@post
+                val context = activity.view?.context
+                AlertDialog.Builder(context).setTitle(title).setMessage(
+                        message).setPositiveButton(
+                        "OK") { _, _ -> }.create().show()
+            }
+        }
+
+        override fun dialog(title: String,
+                            text: GuiController.TextFieldData,
+                            multiline: Boolean) {
+            handler.post {
+                val activity = this@ScapesEngineService.activity ?: return@post
+                val context = activity.view?.context
+                val editText = EditText(context)
+                editText.setText(text.text.toString())
+                val dialog = AlertDialog.Builder(context).setTitle(
+                        title).setView(
+                        editText).setPositiveButton("Done") { _, _ ->
+                    if (text.text.isNotEmpty()) {
+                        text.text.delete(0, Int.MAX_VALUE)
+                    }
+                    text.text.append(editText.text)
+                    text.cursor = text.text.length
+                }.create()
+                dialog.show()
+                editText.requestFocus()
+                val imm = editText.context.getSystemService(
+                        Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.showSoftInput(editText, InputMethodManager.SHOW_FORCED)
+            }
+        }
+
+        override fun openFile(path: FilePath) {
+        }
+
+        override fun fingers(): Sequence<ControllerTouch.Tracker> {
+            val view = activity?.view ?: return emptySequence()
+            return view.fingers.values.asSequence()
+        }
+
+        override val isActive: Boolean
+            get() = activity != null
+
+        override fun poll() {
+        }
     }
 
     inner class ScapesBinder : Binder() {

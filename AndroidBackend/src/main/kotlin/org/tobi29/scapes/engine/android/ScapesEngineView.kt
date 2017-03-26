@@ -21,6 +21,7 @@ import android.opengl.GLSurfaceView
 import android.util.AttributeSet
 import android.view.MotionEvent
 import org.tobi29.scapes.engine.input.ControllerTouch
+import org.tobi29.scapes.engine.utils.math.floor
 import java.util.concurrent.ConcurrentHashMap
 
 class ScapesEngineView(
@@ -28,6 +29,8 @@ class ScapesEngineView(
         attrs: AttributeSet? = null
 ) : GLSurfaceView(context, attrs) {
     val fingers: MutableMap<Int, ControllerTouch.Tracker> = ConcurrentHashMap()
+    val containerWidth get() = floor(width / density)
+    val containerHeight get() = floor(height / density)
     // TODO: Implement proper density support
     val density get() = 3.0
 

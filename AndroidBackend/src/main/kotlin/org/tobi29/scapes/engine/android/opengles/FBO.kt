@@ -15,7 +15,6 @@
  */
 package org.tobi29.scapes.engine.android.opengles
 
-import android.opengl.GLES20
 import org.tobi29.scapes.engine.ScapesEngine
 import org.tobi29.scapes.engine.graphics.*
 import org.tobi29.scapes.engine.utils.math.max
@@ -33,16 +32,15 @@ internal class FBO(engine: ScapesEngine,
     override val texturesColor: List<TextureFBOColor>
     override val textureDepth: TextureFBODepth?
     private var detach: Function0<Unit>? = null
-    private var framebufferID: Int = 0
-    private var width: Int = 0
-    private var currentWidth: Int = 0
-    private var height: Int = 0
-    private var currentHeight: Int = 0
-    private var lastFBO: Int = 0
+    private var framebufferID = 0
+    private var width = 0
+    private var currentWidth = 0
+    private var height = 0
+    private var currentHeight = 0
+    private var lastFBO = 0
     private var used: Long = 0
     override var isStored = false
-        private set
-    private var markAsDisposed: Boolean = false
+    private var markAsDisposed = false
 
     init {
         this.width = max(width, 1)
@@ -60,7 +58,7 @@ internal class FBO(engine: ScapesEngine,
     }
 
     override fun deactivate(gl: GL) {
-        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, lastFBO)
+        glBindFramebuffer(GL_FRAMEBUFFER, lastFBO)
         gl.currentFBO = lastFBO
         lastFBO = 0
     }
@@ -118,9 +116,7 @@ internal class FBO(engine: ScapesEngine,
 
     override fun dispose(gl: GL) {
         gl.check()
-        intBuffers(framebufferID) {
-            GLES20.glDeleteFramebuffers(1, it)
-        }
+        glDeleteFramebuffers(framebufferID)
         for (textureColor in texturesColor) {
             textureColor.dispose(gl)
         }
@@ -145,10 +141,7 @@ internal class FBO(engine: ScapesEngine,
         assert(!isStored)
         isStored = true
         gl.check()
-        intBuffers { intBuffer ->
-            GLES20.glGenFramebuffers(1, intBuffer)
-            framebufferID = intBuffer.get(0)
-        }
+        framebufferID = glGenFramebuffers()
         bind(gl)
         textureDepth?.attach(gl)
         for (i in texturesColor.indices) {
@@ -160,10 +153,10 @@ internal class FBO(engine: ScapesEngine,
             // TODO: Add error handling
             println(status)
         }
-        GLES20.glClearColor(0.0f, 0.0f, 0.0f, 0.0f)
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f)
+        glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
         deactivate(gl)
-        detach = gl.fboTracker().attach(this)
+        detach = gl.fboTracker.attach(this)
     }
 
     private fun bind(gl: GL) {
@@ -171,6 +164,6 @@ internal class FBO(engine: ScapesEngine,
         gl.check()
         lastFBO = gl.currentFBO()
         gl.currentFBO = framebufferID
-        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, framebufferID)
+        glBindFramebuffer(GL_FRAMEBUFFER, framebufferID)
     }
 }

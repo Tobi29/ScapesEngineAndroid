@@ -13,25 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.tobi29.scapes.engine.android.opengles
 
-import android.opengl.GLES20
 import org.tobi29.scapes.engine.ScapesEngine
 import org.tobi29.scapes.engine.graphics.GL
 import org.tobi29.scapes.engine.graphics.Model
 import org.tobi29.scapes.engine.graphics.Shader
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
-internal abstract class VAO protected constructor(protected val engine: ScapesEngine) : Model {
-    private val floatBuffer = ByteBuffer.allocateDirect(16 shl 2).order(
-            ByteOrder.nativeOrder()).asFloatBuffer()
+internal abstract class VAO(protected val engine: ScapesEngine) : Model {
     protected var used: Long = 0
     override var isStored = false
-        protected set
-    protected var markAsDisposed: Boolean = false
-    override var weak: Boolean = false
-    protected var detach: Function0<Unit>? = null
+    protected var markAsDisposed = false
+    override var weak = false
+    protected var detach: (() -> Unit)? = null
 
     override fun markAsDisposed() {
         markAsDisposed = true
@@ -87,29 +82,23 @@ internal abstract class VAO protected constructor(protected val engine: ScapesEn
     protected fun shader(gl: GL,
                          shader: Shader) {
         gl.check()
-        val matrix = gl.matrixStack().current()
+        val matrix = gl.matrixStack.current()
         shader.activate(gl)
         shader.updateUniforms(gl)
         var uniformLocation = shader.uniformLocation(0)
         if (uniformLocation != -1) {
-            floatBuffer.put(matrix.modelView().values()).flip()
-            GLES20.glUniformMatrix4fv(uniformLocation,
-                    floatBuffer.remaining() shr 4, false, floatBuffer)
-            floatBuffer.clear()
+            glUniformMatrix4fv(uniformLocation, false,
+                    matrix.modelView().values())
         }
         uniformLocation = shader.uniformLocation(1)
         if (uniformLocation != -1) {
-            floatBuffer.put(matrix.modelViewProjection().values()).flip()
-            GLES20.glUniformMatrix4fv(uniformLocation,
-                    floatBuffer.remaining() shr 4, false, floatBuffer)
-            floatBuffer.clear()
+            glUniformMatrix4fv(uniformLocation, false,
+                    matrix.modelViewProjection().values())
         }
         uniformLocation = shader.uniformLocation(2)
         if (uniformLocation != -1) {
-            floatBuffer.put(matrix.normal().values()).flip()
-            GLES20.glUniformMatrix3fv(uniformLocation,
-                    floatBuffer.remaining() / 9, false, floatBuffer)
-            floatBuffer.clear()
+            glUniformMatrix3fv(uniformLocation, false,
+                    matrix.normal().values())
         }
     }
 }

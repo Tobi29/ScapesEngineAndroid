@@ -13,10 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.tobi29.scapes.engine.android.opengles
 
-import android.opengl.GLES20
-import android.opengl.GLES30
 import org.tobi29.scapes.engine.graphics.GL
 import org.tobi29.scapes.engine.graphics.RenderType
 import org.tobi29.scapes.engine.graphics.Shader
@@ -24,13 +23,13 @@ import org.tobi29.scapes.engine.graphics.Shader
 internal class VAOFast(private val vbo: VBO,
                        private val length: Int,
                        private val renderType: RenderType) : VAO(
-        vbo.engine()) {
-    private var arrayID: Int = 0
+        vbo.engine) {
+    private var arrayID = 0
 
     init {
-        if (renderType === RenderType.TRIANGLES && length % 3 != 0) {
+        if (renderType == RenderType.TRIANGLES && length % 3 != 0) {
             throw IllegalArgumentException("Length not multiply of 3")
-        } else if (renderType === RenderType.LINES && length % 2 != 0) {
+        } else if (renderType == RenderType.LINES && length % 2 != 0) {
             throw IllegalArgumentException("Length not multiply of 2")
         }
     }
@@ -47,9 +46,9 @@ internal class VAOFast(private val vbo: VBO,
             return false
         }
         gl.check()
-        GLES30.glBindVertexArray(arrayID)
+        glBindVertexArray(arrayID)
         shader(gl, shader)
-        GLES20.glDrawArrays(GLUtils.renderType(renderType), 0, length)
+        glDrawArrays(GLUtils.renderType(renderType), 0, length)
         return true
     }
 
@@ -67,10 +66,9 @@ internal class VAOFast(private val vbo: VBO,
             return false
         }
         gl.check()
-        GLES30.glBindVertexArray(arrayID)
+        glBindVertexArray(arrayID)
         shader(gl, shader)
-        GLES30.glDrawArraysInstanced(GLUtils.renderType(renderType), 0, length,
-                count)
+        glDrawArraysInstanced(GLUtils.renderType(renderType), 0, length, count)
         return true
     }
 
@@ -86,13 +84,10 @@ internal class VAOFast(private val vbo: VBO,
         }
         isStored = true
         gl.check()
-        intBuffers { intBuffer ->
-            GLES30.glGenVertexArrays(1, intBuffer)
-            arrayID = intBuffer.get(0)
-        }
-        GLES30.glBindVertexArray(arrayID)
+        arrayID = glGenVertexArrays()
+        glBindVertexArray(arrayID)
         vbo.store(gl, weak)
-        detach = gl.vaoTracker().attach(this)
+        detach = gl.vaoTracker.attach(this)
         return true
     }
 
@@ -100,8 +95,6 @@ internal class VAOFast(private val vbo: VBO,
         assert(isStored)
         gl.check()
         vbo.dispose(gl)
-        intBuffers(arrayID) { intBuffer ->
-            GLES30.glDeleteVertexArrays(1, intBuffer)
-        }
+        glDeleteVertexArrays(arrayID)
     }
 }

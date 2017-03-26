@@ -28,12 +28,10 @@ import android.os.Handler
 import android.os.IBinder
 import android.provider.OpenableColumns
 import mu.KLogging
-import org.tobi29.scapes.engine.gui.GuiAction
 import org.tobi29.scapes.engine.input.FileType
 import org.tobi29.scapes.engine.utils.Sync
 import org.tobi29.scapes.engine.utils.io.BufferedReadChannelStream
 import org.tobi29.scapes.engine.utils.io.ReadableByteStream
-import org.tobi29.scapes.engine.utils.math.round
 import java.io.IOException
 import java.nio.channels.Channels
 import javax.microedition.khronos.egl.EGLConfig
@@ -44,13 +42,10 @@ abstract class ScapesEngineActivity : Activity() {
     private val handler = Handler()
     private var serviceIntent: Intent? = null
     private var fileConsumer: ((String, ReadableByteStream) -> Unit)? = null
-    private var widthSize = 0
-    private var heightSize = 0
     private var widthResolution = 0
     private var heightResolution = 0
-    private var containerResized = false
     private val connection = ScapesEngineConnection()
-    internal var view: ScapesEngineView? = null
+    var view: ScapesEngineView? = null
 
     protected abstract fun service(): Class<out ScapesEngineService>
 
@@ -60,29 +55,21 @@ abstract class ScapesEngineActivity : Activity() {
             setRenderer(object : GLSurfaceView.Renderer {
                 override fun onSurfaceCreated(gl: GL10,
                                               config: EGLConfig) {
-                    connection.engine?.engine?.graphics?.reset()
+                    connection.engine?.resetGraphics()
                     sync.init()
                 }
 
                 override fun onSurfaceChanged(gl: GL10,
                                               width: Int,
                                               height: Int) {
-                    val density = density
-                    widthSize = round(width / density)
-                    heightSize = round(height / density)
                     widthResolution = width
                     heightResolution = height
-                    containerResized = true
                 }
 
                 override fun onDrawFrame(gl: GL10) {
                     connection.engine?.run {
-                        if (containerResized) {
-                            setResolution(widthSize, heightSize,
-                                    widthResolution, heightResolution)
-                            containerResized = false
-                        }
-                        render(sync.delta(), this@apply)
+                        render(sync.delta(), this@apply, widthResolution,
+                                heightResolution)
                     }
                     sync.tick()
                 }
@@ -104,7 +91,7 @@ abstract class ScapesEngineActivity : Activity() {
     }
 
     override fun onBackPressed() {
-        connection.engine?.engine?.guiStack?.fireAction(GuiAction.BACK)
+        connection.engine?.onBackPressed()
     }
 
     override fun onDestroy() {

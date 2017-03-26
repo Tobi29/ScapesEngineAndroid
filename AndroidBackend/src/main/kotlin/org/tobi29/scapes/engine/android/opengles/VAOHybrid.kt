@@ -13,10 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.tobi29.scapes.engine.android.opengles
 
-import android.opengl.GLES20
-import android.opengl.GLES30
 import org.tobi29.scapes.engine.graphics.GL
 import org.tobi29.scapes.engine.graphics.ModelHybrid
 import org.tobi29.scapes.engine.graphics.RenderType
@@ -26,8 +25,8 @@ import java.nio.ByteBuffer
 internal class VAOHybrid(private val vbo1: VBO,
                          private val vbo2: VBO,
                          private val renderType: RenderType) : VAO(
-        vbo1.engine()), ModelHybrid {
-    private var arrayID: Int = 0
+        vbo1.engine), ModelHybrid {
+    private var arrayID = 0
 
     override fun render(gl: GL,
                         shader: Shader): Boolean {
@@ -42,9 +41,9 @@ internal class VAOHybrid(private val vbo1: VBO,
             return false
         }
         gl.check()
-        GLES30.glBindVertexArray(arrayID)
+        glBindVertexArray(arrayID)
         shader(gl, shader)
-        GLES20.glDrawArrays(GLUtils.renderType(renderType), 0, length)
+        glDrawArrays(GLUtils.renderType(renderType), 0, length)
         return true
     }
 
@@ -63,10 +62,9 @@ internal class VAOHybrid(private val vbo1: VBO,
             return false
         }
         gl.check()
-        GLES30.glBindVertexArray(arrayID)
+        glBindVertexArray(arrayID)
         shader(gl, shader)
-        GLES30.glDrawArraysInstanced(GLUtils.renderType(renderType), 0, length,
-                count)
+        glDrawArraysInstanced(GLUtils.renderType(renderType), 0, length, count)
         return true
     }
 
@@ -86,14 +84,11 @@ internal class VAOHybrid(private val vbo1: VBO,
         }
         isStored = true
         gl.check()
-        intBuffers { intBuffer ->
-            GLES30.glGenVertexArrays(1, intBuffer)
-            arrayID = intBuffer.get(0)
-        }
-        GLES30.glBindVertexArray(arrayID)
+        arrayID = glGenVertexArrays()
+        glBindVertexArray(arrayID)
         vbo1.store(gl, weak)
         vbo2.store(gl, weak)
-        detach = gl.vaoTracker().attach(this)
+        detach = gl.vaoTracker.attach(this)
         return true
     }
 
@@ -102,9 +97,7 @@ internal class VAOHybrid(private val vbo1: VBO,
         gl.check()
         vbo1.dispose(gl)
         vbo2.dispose(gl)
-        intBuffers(arrayID) { intBuffer ->
-            GLES30.glDeleteVertexArrays(1, intBuffer)
-        }
+        glDeleteVertexArrays(arrayID)
     }
 
     override fun strideStream(): Int {

@@ -33,6 +33,13 @@ internal object GLUtils : KLogging() {
     private val SHADER_GENERATOR = ThreadLocal {
         GLSLGenerator(GLSLGenerator.Version.GLES_300)
     }
+    private val attachmentBuffer = ByteBuffer.allocateDirect(16 shl 2).order(
+            ByteOrder.nativeOrder()).asIntBuffer().apply {
+        for (i in 0..15) {
+            put(GLES20.GL_COLOR_ATTACHMENT0 + i)
+        }
+        rewind()
+    }
 
     fun renderType(renderType: RenderType): Int {
         when (renderType) {
@@ -57,37 +64,29 @@ internal object GLUtils : KLogging() {
             throw IllegalArgumentException(
                     "Attachments must be 0-15, was " + attachments)
         }
-        val attachBuffer = ByteBuffer.allocateDirect(16 shl 2).order(
-                ByteOrder.nativeOrder()).asIntBuffer()
-        attachBuffer.limit(attachments)
-        for (i in 0..attachments - 1) {
-            attachBuffer.put(GLES20.GL_COLOR_ATTACHMENT0 + i)
-        }
-        attachBuffer.rewind()
-        GLES30.glDrawBuffers(attachBuffer.remaining(), attachBuffer)
+        GLES30.glDrawBuffers(attachments, attachmentBuffer)
     }
 
     fun printLogShader(id: Int) {
-        val lengthBuffer = ByteBuffer.allocateDirect(1 shl 2).order(
-                ByteOrder.nativeOrder()).asIntBuffer()
-        GLES20.glGetShaderiv(id, GLES20.GL_INFO_LOG_LENGTH, lengthBuffer)
-        if (lengthBuffer.get(0) > 1) {
+        val length = readInts { i0 ->
+            GLES20.glGetShaderiv(id, GLES20.GL_INFO_LOG_LENGTH, i0)
+        }
+        if (length > 1) {
             val out = GLES20.glGetShaderInfoLog(id)
             logger.info { "Shader log: $out" }
         }
     }
 
     fun printLogProgram(id: Int) {
-        val lengthBuffer = ByteBuffer.allocateDirect(1 shl 2).order(
-                ByteOrder.nativeOrder()).asIntBuffer()
-        GLES20.glGetProgramiv(id, GLES20.GL_INFO_LOG_LENGTH, lengthBuffer)
-        if (lengthBuffer.get(0) > 1) {
+        val length = readInts { i0 ->
+            GLES20.glGetProgramiv(id, GLES20.GL_INFO_LOG_LENGTH, i0)
+        }
+        if (length > 1) {
             val out = GLES20.glGetProgramInfoLog(id)
             logger.info { "Program log: $out" }
         }
     }
 
-    @Throws(IOException::class)
     fun createProgram(shader: CompiledShader,
                       properties: Map<String, String>): Pair<Int, IntArray> {
         try {
@@ -108,10 +107,10 @@ internal object GLUtils : KLogging() {
             GLES20.glAttachShader(program, vertex)
             GLES20.glAttachShader(program, fragment)
             GLES20.glLinkProgram(program)
-            val statusBuffer = ByteBuffer.allocateDirect(1 shl 2).order(
-                    ByteOrder.nativeOrder()).asIntBuffer()
-            GLES20.glGetProgramiv(program, GLES20.GL_LINK_STATUS, statusBuffer)
-            if (statusBuffer.get(0) != GLES20.GL_TRUE) {
+            val status = readInts { i0 ->
+                GLES20.glGetProgramiv(program, GLES20.GL_LINK_STATUS, i0)
+            }
+            if (status != GLES20.GL_TRUE) {
                 logger.error { "Failed to link status bar!" }
                 printLogProgram(program)
             }
@@ -137,76 +136,132 @@ internal object GLUtils : KLogging() {
     }
 }
 
-val intBuffers = ThreadLocal {
-    Array(4) {
-        ByteBuffer.allocateDirect(4).order(
-                ByteOrder.nativeOrder()).asIntBuffer()
-    }
+val buffers = ThreadLocal {
+    Buffers(ByteBuffer.allocateDirect(16).order(
+            ByteOrder.nativeOrder()).asIntBuffer())
+}
+
+class Buffers(val i4at0: IntBuffer) {
+    val i3at0 = i4at0.slice(0, 3)
+    val i2at0 = i4at0.slice(0, 2)
+    val i2at2 = i4at0.slice(2, 4)
+    val i1at0 = i4at0.slice(0, 1)
+    val i1at1 = i4at0.slice(1, 2)
+    val i1at2 = i4at0.slice(2, 3)
+    val i1at3 = i4at0.slice(3, 4)
+}
+
+private fun IntBuffer.slice(start: Int,
+                            end: Int): IntBuffer {
+    position(start)
+    limit(end)
+    val slice = slice()
+    clear()
+    return slice
 }
 
 inline fun <R> intBuffers(block: (IntBuffer) -> R): R {
-    val buffer0 = intBuffers.get()[0]
+    val i0 = buffers.get().i1at0
     try {
-        return block(buffer0)
+        return block(i0)
     } finally {
-        buffer0.clear()
+        i0.clear()
     }
 }
 
 inline fun <R> intBuffers(block: (IntBuffer, IntBuffer) -> R): R {
-    val buffer0 = intBuffers.get()[0]
-    val buffer1 = intBuffers.get()[1]
+    val i0 = buffers.get().i1at0
+    val i1 = buffers.get().i1at1
     try {
-        return block(buffer0, buffer1)
+        return block(i0, i1)
     } finally {
-        buffer0.clear()
-        buffer1.clear()
+        i0.clear()
+        i1.clear()
     }
 }
 
 inline fun <R> intBuffers(block: (IntBuffer, IntBuffer, IntBuffer) -> R): R {
-    val buffer0 = intBuffers.get()[0]
-    val buffer1 = intBuffers.get()[1]
-    val buffer2 = intBuffers.get()[1]
+    val i0 = buffers.get().i1at0
+    val i1 = buffers.get().i1at1
+    val i2 = buffers.get().i1at2
     try {
-        return block(buffer0, buffer1, buffer2)
+        return block(i0, i1, i2)
     } finally {
-        buffer0.clear()
-        buffer1.clear()
-        buffer2.clear()
+        i0.clear()
+        i1.clear()
+        i2.clear()
     }
 }
 
 inline fun <R> intBuffers(block: (IntBuffer, IntBuffer, IntBuffer, IntBuffer) -> R): R {
-    val buffer0 = intBuffers.get()[0]
-    val buffer1 = intBuffers.get()[1]
-    val buffer2 = intBuffers.get()[2]
-    val buffer3 = intBuffers.get()[3]
+    val i0 = buffers.get().i1at0
+    val i1 = buffers.get().i1at1
+    val i2 = buffers.get().i1at2
+    val i3 = buffers.get().i1at3
     try {
-        return block(buffer0, buffer1, buffer2, buffer3)
+        return block(i0, i1, i2, i3)
     } finally {
-        buffer0.clear()
-        buffer1.clear()
-        buffer2.clear()
-        buffer3.clear()
+        i0.clear()
+        i1.clear()
+        i2.clear()
+        i3.clear()
     }
 }
 
+inline fun <R> intBuffers2(block: (IntBuffer) -> R): R {
+    val i0 = buffers.get().i2at0
+    try {
+        return block(i0)
+    } finally {
+        i0.clear()
+    }
+}
+
+inline fun <R> intBuffers2(block: (IntBuffer, IntBuffer) -> R): R {
+    val i0 = buffers.get().i2at0
+    val i1 = buffers.get().i2at2
+    try {
+        return block(i0, i1)
+    } finally {
+        i0.clear()
+        i1.clear()
+    }
+}
+
+inline fun <R> intBuffers3(block: (IntBuffer) -> R): R {
+    val i0 = buffers.get().i3at0
+    try {
+        return block(i0)
+    } finally {
+        i0.clear()
+    }
+}
+
+inline fun <R> intBuffers4(block: (IntBuffer) -> R): R {
+    val i0 = buffers.get().i4at0
+    try {
+        return block(i0)
+    } finally {
+        i0.clear()
+    }
+}
+
+
 inline fun <R> intBuffers(v0: Int,
                           block: (IntBuffer) -> R): R {
-    intBuffers { buffer0 ->
-        buffer0.put(0, v0)
-        return block(buffer0)
+    intBuffers { i0 ->
+        i0.put(0, v0)
+        return block(i0)
     }
 }
 
 inline fun <R> intBuffers(v0: Int,
                           v1: Int,
                           block: (IntBuffer, IntBuffer) -> R): R {
-    intBuffers { buffer0, buffer1 ->
-        buffer0.put(0, v0)
-        buffer1.put(0, v1)
-        return block(buffer0, buffer1)
+    intBuffers { i0, i1 ->
+        i0.put(0, v0)
+        i1.put(0, v1)
+        return block(i0, i1)
     }
 }
 
@@ -214,11 +269,11 @@ inline fun <R> intBuffers(v0: Int,
                           v1: Int,
                           v2: Int,
                           block: (IntBuffer, IntBuffer, IntBuffer) -> R): R {
-    intBuffers { buffer0, buffer1, buffer2 ->
-        buffer0.put(0, v0)
-        buffer1.put(0, v1)
-        buffer2.put(0, v2)
-        return block(buffer0, buffer1, buffer2)
+    intBuffers { i0, i1, i2 ->
+        i0.put(0, v0)
+        i1.put(0, v1)
+        i2.put(0, v2)
+        return block(i0, i1, i2)
     }
 }
 
@@ -227,11 +282,29 @@ inline fun <R> intBuffers(v0: Int,
                           v2: Int,
                           v3: Int,
                           block: (IntBuffer, IntBuffer, IntBuffer, IntBuffer) -> R): R {
-    intBuffers { buffer0, buffer1, buffer2, buffer3 ->
-        buffer0.put(0, v0)
-        buffer1.put(0, v1)
-        buffer2.put(0, v2)
-        buffer3.put(0, v3)
-        return block(buffer0, buffer1, buffer2, buffer3)
+    intBuffers { i0, i1, i2, i3 ->
+        i0.put(0, v0)
+        i1.put(0, v1)
+        i2.put(0, v2)
+        i3.put(0, v3)
+        return block(i0, i1, i2, i3)
     }
 }
+
+inline fun readInts(block: (IntBuffer) -> Unit) =
+        intBuffers { i0 ->
+            block(i0)
+            i0[0]
+        }
+
+inline fun readInts(block: (IntBuffer, IntBuffer) -> Unit) =
+        intBuffers { i0, i1 ->
+            block(i0, i1)
+            Pair(i0[0], i1[0])
+        }
+
+inline fun readInts(block: (IntBuffer, IntBuffer, IntBuffer) -> Unit) =
+        intBuffers { i0, i1, i2 ->
+            block(i0, i1, i2)
+            Triple(i0[0], i1[0], i2[0])
+        }

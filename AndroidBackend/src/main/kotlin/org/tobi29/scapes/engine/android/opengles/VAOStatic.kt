@@ -13,10 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.tobi29.scapes.engine.android.opengles
 
-import android.opengl.GLES20
-import android.opengl.GLES30
 import org.tobi29.scapes.engine.graphics.GL
 import org.tobi29.scapes.engine.graphics.RenderType
 import org.tobi29.scapes.engine.graphics.Shader
@@ -26,15 +25,15 @@ internal class VAOStatic(private val vbo: VBO,
                          index: IntArray,
                          private val length: Int,
                          private val renderType: RenderType) : VAO(
-        vbo.engine()) {
+        vbo.engine) {
     private var data: ByteBuffer? = null
-    private var indexID: Int = 0
-    private var arrayID: Int = 0
+    private var indexID = 0
+    private var arrayID = 0
 
     init {
-        if (renderType === RenderType.TRIANGLES && length % 3 != 0) {
+        if (renderType == RenderType.TRIANGLES && length % 3 != 0) {
             throw IllegalArgumentException("Length not multiply of 3")
-        } else if (renderType === RenderType.LINES && length % 2 != 0) {
+        } else if (renderType == RenderType.LINES && length % 2 != 0) {
             throw IllegalArgumentException("Length not multiply of 2")
         }
         val indexBuffer = engine.allocate(length shl 1)
@@ -56,10 +55,10 @@ internal class VAOStatic(private val vbo: VBO,
             return false
         }
         gl.check()
-        GLES30.glBindVertexArray(arrayID)
+        glBindVertexArray(arrayID)
         shader(gl, shader)
-        GLES20.glDrawElements(GLUtils.renderType(renderType), length,
-                GLES20.GL_UNSIGNED_SHORT, 0)
+        glDrawElements(GLUtils.renderType(renderType), length,
+                GL_UNSIGNED_SHORT, 0)
         return true
     }
 
@@ -91,21 +90,14 @@ internal class VAOStatic(private val vbo: VBO,
         }
         isStored = true
         gl.check()
-        intBuffers { intBuffer ->
-            GLES30.glGenVertexArrays(1, intBuffer)
-            arrayID = intBuffer.get(0)
-        }
-        GLES30.glBindVertexArray(arrayID)
+        arrayID = glGenVertexArrays()
+        glBindVertexArray(arrayID)
         vbo.store(gl, weak)
         data.rewind()
-        intBuffers { intBuffer ->
-            GLES20.glGenBuffers(1, intBuffer)
-            indexID = intBuffer.get(0)
-        }
-        GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, indexID)
-        GLES20.glBufferData(GLES20.GL_ELEMENT_ARRAY_BUFFER, data.remaining(),
-                data, GLES20.GL_STATIC_DRAW)
-        detach = gl.vaoTracker().attach(this)
+        indexID = glGenBuffers()
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexID)
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, data, GL_STATIC_DRAW)
+        detach = gl.vaoTracker.attach(this)
         if (weak) {
             this.data = null
         }
@@ -116,10 +108,7 @@ internal class VAOStatic(private val vbo: VBO,
         assert(isStored)
         gl.check()
         vbo.dispose(gl)
-        intBuffers(indexID) { intBuffer ->
-            GLES20.glDeleteBuffers(1, intBuffer)
-            intBuffer.put(0, arrayID)
-            GLES30.glDeleteVertexArrays(1, intBuffer)
-        }
+        glDeleteBuffers(indexID)
+        glDeleteVertexArrays(arrayID)
     }
 }

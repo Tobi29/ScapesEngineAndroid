@@ -16,7 +16,6 @@
 
 package org.tobi29.scapes.engine.android.opengles
 
-import android.opengl.GLES20
 import org.tobi29.scapes.engine.ScapesEngine
 import org.tobi29.scapes.engine.graphics.GL
 import org.tobi29.scapes.engine.graphics.TextureFilter
@@ -39,7 +38,6 @@ internal abstract class TextureFBO(engine: ScapesEngine,
                height: Int,
                gl: GL) {
         setBuffer(null, width, height)
-        dirtyFilter.set(true)
         texture(gl)
     }
 
@@ -48,7 +46,7 @@ internal abstract class TextureFBO(engine: ScapesEngine,
             return
         }
         gl.check()
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureID)
+        glBindTexture(GL_TEXTURE_2D, textureID)
         setFilter()
     }
 
@@ -81,11 +79,8 @@ internal abstract class TextureFBO(engine: ScapesEngine,
         assert(!isStored)
         isStored = true
         gl.check()
-        intBuffers { intBuffer ->
-            GLES20.glGenTextures(1, intBuffer)
-            textureID = intBuffer.get(0)
-        }
-        dirtyFilter.set(true)
+        textureID = glGenTextures()
         texture(gl)
+        dirtyFilter.set(true)
     }
 }
