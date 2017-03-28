@@ -43,18 +43,24 @@ import org.tobi29.scapes.engine.input.ControllerDefault
 import org.tobi29.scapes.engine.input.ControllerJoystick
 import org.tobi29.scapes.engine.input.ControllerTouch
 import org.tobi29.scapes.engine.input.FileType
+import org.tobi29.scapes.engine.utils.Crashable
 import org.tobi29.scapes.engine.utils.EventDispatcher
 import org.tobi29.scapes.engine.utils.io.ReadableByteStream
+import org.tobi29.scapes.engine.utils.io.filesystem.FileCache
 import org.tobi29.scapes.engine.utils.io.filesystem.FilePath
 import org.tobi29.scapes.engine.utils.io.filesystem.path
+import org.tobi29.scapes.engine.utils.tag.MutableTagMap
+import org.tobi29.scapes.engine.utils.task.TaskExecutor
 import java.io.File
 import java.io.IOException
 import java.lang.ref.WeakReference
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.system.exitProcess
 
-abstract class ScapesEngineService : Service() {
+abstract class ScapesEngineService : Service(), Crashable {
+    private val taskExecutor = TaskExecutor(this, "Service")
     private var container: AndroidContainer? = null
     private val done = AtomicBoolean()
     private val handler = Handler()
@@ -84,18 +90,18 @@ abstract class ScapesEngineService : Service() {
         container?.engine?.guiStack?.fireAction(GuiAction.BACK)
     }
 
-    abstract fun onCreateEngine(home: FilePath): (ScapesEngine) -> Game
+    abstract fun onCreateEngine(): Pair<(ScapesEngine) -> Game, MutableTagMap>
 
     override fun onCreate() {
         super.onCreate()
         val notification = Notification.Builder(this).build()
         startForeground(1, notification)
-        val home = path(filesDir.toString())
-        val cache = path(cacheDir.toString())
-        val game = onCreateEngine(home)
+        val cache = path(cacheDir.toString()).resolve("AndroidTypeface")
+        FileCache.check(cache)
+        val (game, configMap) = onCreateEngine()
         val engine = ScapesEngine(game, { p1 ->
             AndroidContainer(p1).also { container = it }
-        }, home, cache, true)
+        }, taskExecutor, configMap, true)
         engine.start()
     }
 
@@ -104,6 +110,7 @@ abstract class ScapesEngineService : Service() {
         done.set(true)
         activity?.finishAndRemoveTask()
         container?.engine?.dispose()
+        taskExecutor.shutdown()
         activity = null
         container = null
         logger.info { "Service destroyed" }
@@ -121,6 +128,15 @@ abstract class ScapesEngineService : Service() {
     override fun onTaskRemoved(rootIntent: Intent) {
         super.onTaskRemoved(rootIntent)
         stopSelf()
+    }
+
+    override fun crash(e: Throwable): Nothing {
+        try {
+            logger.error { "Engine crashed: $e" }
+            e.printStackTrace()
+        } finally {
+            exitProcess(1)
+        }
     }
 
     inner class AndroidContainer(
@@ -175,10 +191,11 @@ abstract class ScapesEngineService : Service() {
                 if (!font.exists()) {
                     font = engine.files[asset + ".ttf"].get()
                 }
+                val cache = cachePath.resolve("AndroidTypeface")
                 var typeface: Typeface? = null
                 while (typeface == null) {
-                    val file = engine.fileCache.retrieve(
-                            engine.fileCache.store(font, "AndroidTypeface"))
+                    val file = FileCache.retrieve(cache,
+                            FileCache.store(cache, font))
                     try {
                         if (file != null) {
                             typeface = Typeface.createFromFile(
