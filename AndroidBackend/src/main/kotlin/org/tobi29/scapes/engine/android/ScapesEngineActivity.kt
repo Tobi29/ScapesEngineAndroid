@@ -17,88 +17,64 @@
 package org.tobi29.scapes.engine.android
 
 import android.app.Activity
-import android.content.ComponentName
-import android.content.Context
 import android.content.Intent
-import android.content.ServiceConnection
-import android.net.Uri
-import android.opengl.GLSurfaceView
 import android.os.Bundle
 import android.os.Handler
-import android.os.IBinder
-import android.provider.OpenableColumns
 import mu.KLogging
+import org.tobi29.scapes.engine.Game
+import org.tobi29.scapes.engine.ScapesEngine
+import org.tobi29.scapes.engine.gui.GuiAction
 import org.tobi29.scapes.engine.input.FileType
-import org.tobi29.scapes.engine.utils.Sync
-import org.tobi29.scapes.engine.utils.io.BufferedReadChannelStream
+import org.tobi29.scapes.engine.utils.Crashable
 import org.tobi29.scapes.engine.utils.io.ReadableByteStream
-import java.io.IOException
-import java.nio.channels.Channels
-import javax.microedition.khronos.egl.EGLConfig
-import javax.microedition.khronos.opengles.GL10
+import org.tobi29.scapes.engine.utils.io.filesystem.FileCache
+import org.tobi29.scapes.engine.utils.io.filesystem.FilePath
+import org.tobi29.scapes.engine.utils.io.filesystem.path
+import org.tobi29.scapes.engine.utils.tag.MutableTagMap
+import org.tobi29.scapes.engine.utils.task.TaskExecutor
+import kotlin.system.exitProcess
 
-abstract class ScapesEngineActivity : Activity() {
-    private val sync = Sync(60.0, 5000000000L, false, "Rendering")
+abstract class ScapesEngineActivity : GLActivity(), Crashable {
+    private val taskExecutor = TaskExecutor(this, "Activity")
     private val handler = Handler()
-    private var serviceIntent: Intent? = null
     private var fileConsumer: ((String, ReadableByteStream) -> Unit)? = null
-    private var widthResolution = 0
-    private var heightResolution = 0
-    private val connection = ScapesEngineConnection()
-    var view: ScapesEngineView? = null
+    private var container: AndroidActivityContainer? = null
 
-    protected abstract fun service(): Class<out ScapesEngineService>
+    abstract fun onCreateEngine(): Pair<(ScapesEngine) -> Game, MutableTagMap>
 
-    public override fun onCreate(savedInstanceState: Bundle?) {
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        view = ScapesEngineView(this).apply {
-            setRenderer(object : GLSurfaceView.Renderer {
-                override fun onSurfaceCreated(gl: GL10,
-                                              config: EGLConfig) {
-                    connection.engine?.resetGraphics()
-                    sync.init()
-                }
-
-                override fun onSurfaceChanged(gl: GL10,
-                                              width: Int,
-                                              height: Int) {
-                    widthResolution = width
-                    heightResolution = height
-                }
-
-                override fun onDrawFrame(gl: GL10) {
-                    connection.engine?.run {
-                        render(sync.delta(), this@apply, widthResolution,
-                                heightResolution)
-                    }
-                    sync.tick()
-                }
-            })
-        }
-        setContentView(view)
-        serviceIntent = Intent(this, service())
-        bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE)
+        view?.setRenderer(object : ScapesEngineRenderer() {
+            override val container get() = this@ScapesEngineActivity.container
+        })
+        val cache = path(cacheDir.toString()).resolve("AndroidTypeface")
+        FileCache.check(cache)
+        val (game, configMap) = onCreateEngine()
+        val engine = ScapesEngine(game, { engine ->
+            AndroidActivityContainer(engine, cache).also { container = it }
+        }, taskExecutor, configMap, true)
+        engine.start()
     }
 
-    public override fun onResume() {
+    override fun onResume() {
         super.onResume()
-        view?.onResume()
+        container?.engine?.start()
     }
 
-    public override fun onPause() {
+    override fun onPause() {
         super.onPause()
-        view?.onPause()
+        container?.engine?.halt()
     }
 
     override fun onBackPressed() {
-        connection.engine?.onBackPressed()
+        container?.engine?.guiStack?.fireAction(GuiAction.BACK)
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        unbindService(connection)
-        serviceIntent = null
-        view = null
+        container?.engine?.dispose()
+        taskExecutor.shutdown()
+        container = null
     }
 
     override fun onActivityResult(requestCode: Int,
@@ -108,82 +84,47 @@ abstract class ScapesEngineActivity : Activity() {
         when (requestCode) {
             10 -> if (resultCode == Activity.RESULT_OK && data != null) {
                 fileConsumer?.let { consumer ->
-                    val file = data.data
-                    if (file == null) {
-                        val clipData = data.clipData
-                        if (clipData != null) {
-                            val count = clipData.itemCount
-                            for (i in 0..count - 1) {
-                                acceptFile(consumer,
-                                        clipData.getItemAt(i).uri)
-                            }
-                        }
-                    } else {
-                        acceptFile(consumer, file)
-                    }
+                    acceptFile(contentResolver, consumer, data)
                     fileConsumer = null
                 }
             }
         }
     }
 
-    private fun acceptFile(consumer: (String, ReadableByteStream) -> Unit,
-                           file: Uri) {
-        try {
-            contentResolver.openInputStream(file)?.use { stream ->
-                contentResolver.query(file, null, null, null,
-                        null)?.use { cursor ->
-                    cursor.moveToFirst()
-                    val name = cursor.getString(
-                            cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME))
-                    consumer.invoke(name,
-                            BufferedReadChannelStream(
-                                    Channels.newChannel(stream)))
-                }
-            }
-        } catch (e: IOException) {
-            logger.error(e) { "Failed to apply picked file" }
-        }
-
-    }
-
     fun openFileDialog(type: FileType,
                        multiple: Boolean,
                        result: (String, ReadableByteStream) -> Unit) {
-        handler.post {
-            val intent = Intent(Intent.ACTION_GET_CONTENT)
-            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, multiple)
-            intent.type = "*/*"
-            if (type == FileType.IMAGE) {
-                val types = arrayOf("image/png")
-                intent.putExtra(Intent.EXTRA_MIME_TYPES, types)
-            } else if (type == FileType.MUSIC) {
-                val types = arrayOf("audio/mpeg", "audio/x-wav",
-                        "application/ogg")
-                intent.putExtra(Intent.EXTRA_MIME_TYPES, types)
-            }
-            fileConsumer = result
-            startActivityForResult(intent, 10)
+        fileConsumer = result
+        startActivityForResult(openFileIntent(type, multiple), 10)
+    }
+
+    override fun crash(e: Throwable): Nothing {
+        try {
+            logger.error { "Engine crashed: $e" }
+            e.printStackTrace()
+        } finally {
+            exitProcess(1)
         }
     }
 
-    private inner class ScapesEngineConnection : ServiceConnection {
-        internal var engine: ScapesEngineService? = null
+    inner class AndroidActivityContainer(engine: ScapesEngine,
+                                         typefaceCache: FilePath) : AndroidContainer(
+            engine, handler, typefaceCache) {
+        override val view get() = this@ScapesEngineActivity.view
 
-        override fun onServiceConnected(name: ComponentName,
-                                        service: IBinder) {
-            val engine = (service as ScapesEngineService.ScapesBinder).service
-            if (engine == null) {
-                finishAndRemoveTask()
-            } else {
-                engine.activity(this@ScapesEngineActivity)
-                this.engine = engine
+        override fun openFileDialog(type: FileType,
+                                    title: String,
+                                    multiple: Boolean,
+                                    result: (String, ReadableByteStream) -> Unit) {
+            handler.post {
+                openFileDialog(type, multiple, result)
             }
         }
 
-        override fun onServiceDisconnected(name: ComponentName) {
-            setContentView(null)
-            engine = null
+        override fun stop() {
+            handler.post {
+                finishAndRemoveTask()
+            }
         }
     }
 

@@ -9,8 +9,25 @@ be built using the Android Build Tools.
 Uses Android provided OpenGL ES 3.0 support (for graphics) and a custom built
 OpenAL-soft binary` (for audio, all architectures included by default).
 
-To allow proper clean shutdowns this uses a foreground service for running the
-engine itself with an activity bound to it to provide user interaction.
+There are two ready-to-use ways to run the engine:
+  * Using just an activity: This is the simpler option that gives considerably
+    better battery-life and integrates nicely into the pause and resume
+    lifecycle events. It does however require handling a process kill after
+    `Game.halt()` was called.
+    To use just implement the `ScapesEngineActivity` class and start it.
+    This activity should be registered in the manifest.
+  * Using a bound service: This is the much safer option for complex and
+    intensive games, that cannot quickly save all state during a pause and
+    instead guarantees that the engine will always get shut down correctly
+    unless Android or the user feels like flat out killing it without warning.
+    To use you need to implement the `ScapesEngineServiceActivity` class by
+    returning a class reference to an implementation of the
+    `ScapesEngineService` class. Both should be registered in the manifest.
+
+In both cases in the *will* get shut down and restarted when the activity is
+destroyed, so enabling manual handling of configuration changes is highly
+recommended. The backend tries its best to ensure that configuration changes
+are either handled correctly or no special attention is required to begin with.
 
 ## Roadmap
   * ~~Engine runs~~
