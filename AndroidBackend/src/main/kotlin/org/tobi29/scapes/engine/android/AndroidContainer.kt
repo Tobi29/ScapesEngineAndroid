@@ -15,10 +15,6 @@ import org.tobi29.scapes.engine.android.opengles.GOSAndroidGLES
 import org.tobi29.scapes.engine.backends.openal.openal.OpenALSoundSystem
 import org.tobi29.scapes.engine.graphics.Font
 import org.tobi29.scapes.engine.gui.GuiController
-import org.tobi29.scapes.engine.input.ControllerDefault
-import org.tobi29.scapes.engine.input.ControllerJoystick
-import org.tobi29.scapes.engine.input.ControllerTouch
-import org.tobi29.scapes.engine.utils.EventDispatcher
 import org.tobi29.scapes.engine.utils.io.filesystem.FileCache
 import org.tobi29.scapes.engine.utils.io.filesystem.FilePath
 import java.io.File
@@ -28,15 +24,13 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 abstract class AndroidContainer(
-        internal val engine: ScapesEngine,
+        override val engine: ScapesEngine,
         private val handler: Handler,
         private val typefaceCache: FilePath
-) : Container, ControllerTouch {
+) : Container {
     abstract val view: ScapesEngineView?
     override val gos = GOSAndroidGLES(engine)
-    override val sounds = OpenALSoundSystem(engine, AndroidOpenAL(), 16,
-            50.0)
-    override val events = EventDispatcher()
+    override val sounds = OpenALSoundSystem(engine, AndroidOpenAL(), 16, 50.0)
     override val formFactor = Container.FormFactor.PHONE
     override val containerWidth get() = view?.containerWidth ?: 1
     override val containerHeight get() = view?.containerHeight ?: 1
@@ -58,23 +52,11 @@ abstract class AndroidContainer(
     }
 
     override fun update(delta: Double) {
-        poll()
-    }
-
-    override fun controller(): ControllerDefault? {
-        return null
-    }
-
-    override fun joysticks(): Collection<ControllerJoystick> {
-        return emptyList()
-    }
-
-    override fun joysticksChanged(): Boolean {
-        return false
-    }
-
-    override fun touch(): ControllerTouch? {
-        return this
+        view?.let { view ->
+            while (view.deviceEvents.isNotEmpty()) {
+                engine.events.fire(view.deviceEvents.poll())
+            }
+        }
     }
 
     override fun loadFont(asset: String): Font? {
@@ -167,14 +149,9 @@ abstract class AndroidContainer(
     override fun openFile(path: FilePath) {
     }
 
-    override fun fingers(): Sequence<ControllerTouch.Tracker> {
-        val view = view ?: return emptySequence()
-        return view.fingers.values.asSequence()
-    }
-
-    override val isActive: Boolean
-        get() = view != null
-
-    override fun poll() {
+    companion object {
+        init {
+            AndroidKeyMap.touch()
+        }
     }
 }

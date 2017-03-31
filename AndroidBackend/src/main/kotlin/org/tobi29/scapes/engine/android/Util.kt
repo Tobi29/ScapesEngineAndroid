@@ -9,7 +9,6 @@ import org.tobi29.scapes.engine.input.FileType
 import org.tobi29.scapes.engine.utils.io.BufferedReadChannelStream
 import org.tobi29.scapes.engine.utils.io.ReadableByteStream
 import org.tobi29.scapes.engine.utils.io.filesystem.path
-import java.io.IOException
 import java.nio.channels.Channels
 
 val Context.filesPath get() = path(filesDir.toString())
@@ -52,20 +51,15 @@ fun acceptFile(contentResolver: ContentResolver,
 fun acceptFile(contentResolver: ContentResolver,
                consumer: (String, ReadableByteStream) -> Unit,
                file: Uri) {
-    try {
-        contentResolver.openInputStream(file)?.use { stream ->
-            contentResolver.query(file, null, null, null,
-                    null)?.use { cursor ->
-                cursor.moveToFirst()
-                val name = cursor.getString(
-                        cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME))
-                consumer.invoke(name,
-                        BufferedReadChannelStream(
-                                Channels.newChannel(stream)))
-            }
+    contentResolver.openInputStream(file)?.use { stream ->
+        contentResolver.query(file, null, null, null,
+                null)?.use { cursor ->
+            cursor.moveToFirst()
+            val name = cursor.getString(
+                    cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME))
+            consumer.invoke(name,
+                    BufferedReadChannelStream(
+                            Channels.newChannel(stream)))
         }
-    } catch (e: IOException) {
-        ScapesEngineActivity.logger.error(e) { "Failed to apply picked file" }
     }
-
 }
