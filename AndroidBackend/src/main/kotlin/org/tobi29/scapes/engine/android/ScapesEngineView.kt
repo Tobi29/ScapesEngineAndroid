@@ -129,7 +129,8 @@ class ScapesEngineView(
         val controller = devices[event.deviceId]
         when (controller) {
             is ControllerJoystick -> {
-                event.device.motionRanges.withIndex().forEach { (i, motionRange) ->
+                val device = event.device ?: return true
+                device.motionRanges.withIndex().forEach { (i, motionRange) ->
                     controller.setAxis(i,
                             deadzones(event.getAxisValue(
                                     motionRange.axis).toDouble()))
@@ -159,7 +160,6 @@ class ScapesEngineView(
             }
         }
         return true
-
     }
 
     override fun onKeyUp(keyCode: Int,
