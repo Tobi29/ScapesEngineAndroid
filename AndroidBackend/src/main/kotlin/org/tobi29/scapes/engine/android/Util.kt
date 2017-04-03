@@ -18,15 +18,19 @@ val Context.cachePath get() = path(cacheDir.toString())
 fun openFileIntent(type: FileType,
                    multiple: Boolean) = Intent(
         Intent.ACTION_GET_CONTENT).apply {
-    putExtra(Intent.EXTRA_ALLOW_MULTIPLE, multiple)
+    if (android.os.Build.VERSION.SDK_INT >= 18) {
+        putExtra(Intent.EXTRA_ALLOW_MULTIPLE, multiple)
+    }
     this.type = "*/*"
-    if (type == FileType.IMAGE) {
-        val types = arrayOf("image/png")
-        putExtra(Intent.EXTRA_MIME_TYPES, types)
-    } else if (type == FileType.MUSIC) {
-        val types = arrayOf("audio/mpeg", "audio/x-wav",
-                "application/ogg")
-        putExtra(Intent.EXTRA_MIME_TYPES, types)
+    if (android.os.Build.VERSION.SDK_INT >= 19) {
+        if (type == FileType.IMAGE) {
+            val types = arrayOf("image/png")
+            putExtra(Intent.EXTRA_MIME_TYPES, types)
+        } else if (type == FileType.MUSIC) {
+            val types = arrayOf("audio/mpeg", "audio/x-wav",
+                    "application/ogg")
+            putExtra(Intent.EXTRA_MIME_TYPES, types)
+        }
     }
 }
 
