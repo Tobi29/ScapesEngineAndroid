@@ -24,6 +24,7 @@ import android.util.SparseArray
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
+import mu.KLogging
 import org.tobi29.scapes.engine.input.*
 import org.tobi29.scapes.engine.utils.EventDispatcher
 import org.tobi29.scapes.engine.utils.math.floor
@@ -65,17 +66,23 @@ class ScapesEngineView(
 
         override fun onInputDeviceAdded(deviceId: Int) {
             val device = inputManager.getInputDevice(deviceId)
-            val sources = device.sources
-            if (sources and InputDevice.SOURCE_KEYBOARD != 0 ||
-                    sources and InputDevice.SOURCE_MOUSE != 0) {
+            if (device.isType(InputDevice.SOURCE_KEYBOARD) ||
+                    device.isType(InputDevice.SOURCE_MOUSE)) {
+                if (device.isType(InputDevice.SOURCE_KEYBOARD)) {
+                    logger.info { "Detected keyboard: ${device.name}" }
+                }
+                if (device.isType(InputDevice.SOURCE_MOUSE)) {
+                    logger.info { "Detected mouse: ${device.name}" }
+                }
                 if (defaultDevices == 0) {
                     deviceEvents.add(ControllerAddEvent(defaultController))
                 }
                 defaultDevices++
                 devices.put(deviceId, defaultController)
             }
-            if (sources and InputDevice.SOURCE_GAMEPAD != 0 &&
-                    sources and InputDevice.SOURCE_JOYSTICK != 0) {
+            if (device.isType(InputDevice.SOURCE_GAMEPAD or
+                    InputDevice.SOURCE_JOYSTICK)) {
+                logger.info { "Detected gamepad: ${device.name}" }
                 val controller = ControllerJoystick(device.name,
                         device.motionRanges.size)
                 deviceEvents.add(ControllerAddEvent(controller))
@@ -99,26 +106,38 @@ class ScapesEngineView(
         deviceEvents.add(ControllerAddEvent(this))
     }
 
-    override fun onTouchEvent(e: MotionEvent): Boolean {
-        super.onTouchEvent(e)
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        super.onTouchEvent(event)
         val density = density
-        when (e.actionMasked) {
-            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
-                val index = e.actionIndex
-                val tracker = ControllerTouch.Tracker()
-                tracker.pos.set(e.getX(index) / density,
-                        e.getY(index) / density)
-                val id = e.getPointerId(index)
-                fingers.put(id, tracker)
+        val device = event.device ?: return true
+        if (device.isType(InputDevice.SOURCE_TOUCHSCREEN)) {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
+                    val index = event.actionIndex
+                    val tracker = ControllerTouch.Tracker()
+                    tracker.pos.set(event.getX(index) / density,
+                            event.getY(index) / density)
+                    val id = event.getPointerId(index)
+                    fingers.put(id, tracker)
+                }
+                MotionEvent.ACTION_MOVE -> for ((key, tracker) in fingers) {
+                    val index = event.findPointerIndex(key)
+                    tracker.pos.set(event.getX(index) / density,
+                            event.getY(index) / density)
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_CANCEL -> {
+                    val id = event.getPointerId(event.actionIndex)
+                    fingers.remove(id)
+                }
             }
-            MotionEvent.ACTION_MOVE -> for ((key, tracker) in fingers) {
-                val index = e.findPointerIndex(key)
-                tracker.pos.set(e.getX(index) / density,
-                        e.getY(index) / density)
-            }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_CANCEL -> {
-                val id = e.getPointerId(e.actionIndex)
-                fingers.remove(id)
+        } else {
+            val controller = devices[event.deviceId]
+            when (controller) {
+                is ControllerDefault -> {
+                    if (device.isType(InputDevice.SOURCE_MOUSE)) {
+                        handleMousePointer(event, density, controller)
+                    }
+                }
             }
         }
         return true
@@ -126,10 +145,11 @@ class ScapesEngineView(
 
     override fun onGenericMotionEvent(event: MotionEvent): Boolean {
         super.onGenericMotionEvent(event)
+        val density = density
         val controller = devices[event.deviceId]
+        val device = event.device ?: return true
         when (controller) {
             is ControllerJoystick -> {
-                val device = event.device ?: return true
                 device.motionRanges.withIndex().forEach { (i, motionRange) ->
                     controller.setAxis(i,
                             deadzones(event.getAxisValue(
@@ -137,9 +157,22 @@ class ScapesEngineView(
                 }
             }
             is ControllerDefault -> {
-                if (event.device.sources and InputDevice.SOURCE_MOUSE != 0) {
-                    val x = event.x
-                    val y = event.y
+                if (device.isType(InputDevice.SOURCE_MOUSE)) {
+                    when (event.action) {
+                        MotionEvent.ACTION_BUTTON_PRESS -> {
+                            AndroidKeyMap.button(event.actionButton)?.let {
+                                controller.addPressEvent(it,
+                                        ControllerBasic.PressState.PRESS)
+                            }
+                        }
+                        MotionEvent.ACTION_BUTTON_RELEASE -> {
+                            AndroidKeyMap.button(event.actionButton)?.let {
+                                controller.addPressEvent(it,
+                                        ControllerBasic.PressState.RELEASE)
+                            }
+                        }
+                    }
+                    handleMousePointer(event, density, controller)
                 }
             }
         }
@@ -153,7 +186,6 @@ class ScapesEngineView(
         when (controller) {
             is ControllerBasic -> {
                 AndroidKeyMap.key(keyCode)?.let {
-                    println("$keyCode -> $it")
                     controller.addPressEvent(it,
                             ControllerBasic.PressState.PRESS)
                 }
@@ -191,7 +223,7 @@ class ScapesEngineView(
 
     override fun poll() {}
 
-    companion object {
+    companion object : KLogging() {
         private val DEADZONES = 0.05
         private val DEADZONES_SCALE = 0.95
 
@@ -202,6 +234,35 @@ class ScapesEngineView(
                 return (value + DEADZONES) / DEADZONES_SCALE
             }
             return 0.0
+        }
+
+        private fun handleMousePointer(event: MotionEvent,
+                                       density: Double,
+                                       controller: ControllerDefault) {
+            handleMousePointer(event, { x, y ->
+                controller.set(x / density, y / density)
+            }, { x, y ->
+                controller.addDelta(x / density, y / density)
+            })
+        }
+
+        private inline fun handleMousePointer(event: MotionEvent,
+                                              absolute: (Double, Double) -> Unit,
+                                              relative: (Double, Double) -> Unit) {
+            var ox = event.x
+            var oy = event.y
+            absolute(ox.toDouble(), oy.toDouble())
+            var dx = 0.0f
+            var dy = 0.0f
+            for (i in 0..event.historySize - 1) {
+                val hx = event.getHistoricalX(i)
+                val hy = event.getHistoricalY(i)
+                dx += ox - hx
+                dy += oy - hy
+                ox = hx
+                oy = hy
+            }
+            relative(dx.toDouble(), dy.toDouble())
         }
     }
 }

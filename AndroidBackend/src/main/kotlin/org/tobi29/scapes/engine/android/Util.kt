@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.view.InputDevice
 import org.tobi29.scapes.engine.input.FileType
 import org.tobi29.scapes.engine.utils.io.BufferedReadChannelStream
 import org.tobi29.scapes.engine.utils.io.ReadableByteStream
@@ -67,3 +68,6 @@ fun acceptFile(contentResolver: ContentResolver,
         }
     }
 }
+
+@Suppress("NOTHING_TO_INLINE")
+inline fun InputDevice.isType(type: Int) = sources and type == type

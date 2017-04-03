@@ -62,7 +62,7 @@ ext {
     kotlinVersion = "1.1.1"
     kotlinLoggingVersion = "1.4.3"
     slf4jVersion = "1.7.24"
-    scapesEngineVersion = "3c4e224ece"
+    scapesEngineVersion = "6e4d507fe7"
 
     kotlinLogging = "io.github.microutils:kotlin-logging:$kotlinLoggingVersion"
     slf4jAPI = "org.slf4j:slf4j-api:$slf4jVersion"

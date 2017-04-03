@@ -18,10 +18,12 @@ package org.tobi29.scapes.engine.android
 
 import android.util.SparseArray
 import android.view.KeyEvent
+import android.view.MotionEvent
 import org.tobi29.scapes.engine.input.ControllerKey
 
 object AndroidKeyMap {
     private val KEYS = SparseArray<ControllerKey?>()
+    private val BUTTONS = SparseArray<ControllerKey?>()
 
     init {
         // KEYS.put(KeyEvent.KEYCODE_UNKNOWN, null)
@@ -43,10 +45,10 @@ object AndroidKeyMap {
         KEYS.put(KeyEvent.KEYCODE_9, ControllerKey.KEY_9)
         KEYS.put(KeyEvent.KEYCODE_STAR, c("STAR", "Star"))
         KEYS.put(KeyEvent.KEYCODE_POUND, c("POUND", "Pound"))
-        KEYS.put(KeyEvent.KEYCODE_DPAD_UP, c("DPAD_UP", "DPad Up"))
-        KEYS.put(KeyEvent.KEYCODE_DPAD_DOWN, c("DPAD_DOWN", "DPad Down"))
-        KEYS.put(KeyEvent.KEYCODE_DPAD_LEFT, c("DPAD_LEFT", "DPad Left"))
-        KEYS.put(KeyEvent.KEYCODE_DPAD_RIGHT, c("DPAD_RIGHT", "DPad Right"))
+        KEYS.put(KeyEvent.KEYCODE_DPAD_UP, ControllerKey.KEY_UP)
+        KEYS.put(KeyEvent.KEYCODE_DPAD_DOWN, ControllerKey.KEY_DOWN)
+        KEYS.put(KeyEvent.KEYCODE_DPAD_LEFT, ControllerKey.KEY_LEFT)
+        KEYS.put(KeyEvent.KEYCODE_DPAD_RIGHT, ControllerKey.KEY_RIGHT)
         KEYS.put(KeyEvent.KEYCODE_DPAD_CENTER, c("DPAD_CENTER", "DPad Center"))
         KEYS.put(KeyEvent.KEYCODE_VOLUME_UP, c("VOLUME_UP", "Volume Up"))
         KEYS.put(KeyEvent.KEYCODE_VOLUME_DOWN, c("VOLUME_DOWN", "Volume Down"))
@@ -437,6 +439,21 @@ object AndroidKeyMap {
             KEYS.put(KeyEvent.KEYCODE_SYSTEM_NAVIGATION_RIGHT,
                     c("SYSTEM_NAVIGATION_RIGHT", "System Navigation Right"))
         }
+
+        if (android.os.Build.VERSION.SDK_INT >= 14) {
+            BUTTONS.put(MotionEvent.BUTTON_PRIMARY, ControllerKey.BUTTON_0)
+            BUTTONS.put(MotionEvent.BUTTON_SECONDARY, ControllerKey.BUTTON_1)
+            BUTTONS.put(MotionEvent.BUTTON_TERTIARY, ControllerKey.BUTTON_2)
+            BUTTONS.put(MotionEvent.BUTTON_BACK, ControllerKey.BUTTON_3)
+            BUTTONS.put(MotionEvent.BUTTON_FORWARD, ControllerKey.BUTTON_4)
+        }
+
+        if (android.os.Build.VERSION.SDK_INT >= 23) {
+            BUTTONS.put(MotionEvent.BUTTON_STYLUS_PRIMARY,
+                    ControllerKey.BUTTON_5)
+            BUTTONS.put(MotionEvent.BUTTON_STYLUS_SECONDARY,
+                    ControllerKey.BUTTON_6)
+        }
     }
 
     private fun c(name: String,
@@ -444,6 +461,8 @@ object AndroidKeyMap {
             ControllerKey.of("ANDROID_$name", "$humanName (Android)")
 
     fun key(id: Int) = KEYS[id]
+
+    fun button(id: Int) = BUTTONS[id]
 
     fun touch() = {}
 }
