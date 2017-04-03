@@ -62,15 +62,11 @@ ext {
     kotlinVersion = "1.1.1"
     kotlinLoggingVersion = "1.4.3"
     slf4jVersion = "1.7.24"
-    spekVersion = "f0935817fa"
     scapesEngineVersion = "3c4e224ece"
 
     kotlinLogging = "io.github.microutils:kotlin-logging:$kotlinLoggingVersion"
     slf4jAPI = "org.slf4j:slf4j-api:$slf4jVersion"
     kotlinSTD = "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
-    spekAPI = "com.github.JetBrains.spek:spek-api:$spekVersion"
-    spekEngine =
-            "com.github.JetBrains.spek:spek-junit-platform-engine:$spekVersion"
 
     scapesEngineEngine =
             "com.github.Tobi29.ScapesEngine:Engine:$scapesEngineVersion"
