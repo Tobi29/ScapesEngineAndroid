@@ -18,8 +18,6 @@ apply plugin: "com.android.library"
 apply plugin: "kotlin-android"
 apply plugin: "com.github.dcendents.android-maven"
 
-group = "com.github.Tobi29.ScapesEngineAndroid"
-
 android {
     compileSdkVersion = 25
     buildToolsVersion = androidBuildToolsVersion
