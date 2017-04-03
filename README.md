@@ -35,8 +35,9 @@ are either handled correctly or no special attention is required to begin with.
   * ~~Scapes works more or less fully~~ (It tests most of the engine)
   * ~~Dialogs~~ (Save dialog not implemented yet)
   * ~~Performance profiling integrations~~ (Systrace and CPU sampler do the job)
-  * Keyboard and mouse support
-  * Gamepad support
+  * ~~Keyboard and mouse support~~ (Mouse capture will probably only be
+    available with Android O once implemented)
+  * ~~Gamepad support~~
   * Use platforms APIs for Audio and Image decoding
   * Power management (The engine currently only knows one mode: drain battery)
   * Allow easy embedding without full engine running
