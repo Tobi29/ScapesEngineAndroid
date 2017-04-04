@@ -52,7 +52,7 @@ abstract class ScapesEngineActivity : GLActivity(), Crashable {
         val (game, configMap) = onCreateEngine()
         val engine = ScapesEngine(game, { engine ->
             AndroidActivityContainer(engine, cache).also { container = it }
-        }, taskExecutor, configMap, true)
+        }, taskExecutor, configMap)
         engine.start()
     }
 

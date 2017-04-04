@@ -19,7 +19,6 @@ package org.tobi29.scapes.engine.android
 import android.app.Notification
 import android.app.Service
 import android.content.Intent
-import android.opengl.GLSurfaceView
 import android.os.Binder
 import android.os.Handler
 import android.os.IBinder
@@ -69,7 +68,7 @@ abstract class ScapesEngineService : Service(), Crashable {
         val (game, configMap) = onCreateEngine()
         val engine = ScapesEngine(game, { engine ->
             AndroidServiceContainer(engine, cache).also { container = it }
-        }, taskExecutor, configMap, true)
+        }, taskExecutor, configMap)
         engine.start()
     }
 
