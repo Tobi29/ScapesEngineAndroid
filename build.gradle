@@ -72,6 +72,10 @@ ext {
             "com.github.Tobi29.ScapesEngine:Engine:$scapesEngineVersion"
     scapesEngineUtils =
             "com.github.Tobi29.ScapesEngine:Utils:$scapesEngineVersion"
+    scapesEngineTagStructureBinary =
+            "com.github.Tobi29.ScapesEngine:TagStructureBinary:$scapesEngineVersion"
+    scapesEngineIOUtils =
+            "com.github.Tobi29.ScapesEngine:IOUtils:$scapesEngineVersion"
     scapesEngineServerFramework =
             "com.github.Tobi29.ScapesEngine:ServerFramework:$scapesEngineVersion"
     scapesEngineSQLFramework =

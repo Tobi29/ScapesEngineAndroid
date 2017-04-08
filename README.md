@@ -80,6 +80,13 @@ Android backend for the engine using an activity and foreground service.
   * [OpenALSounds](
     https://github.com/Tobi29/ScapesEngine/tree/master/Backends/OpenALSounds)
 
+## AndroidParcelTag
+Glue layer between Android Parcels and Bundles and tag structures
+
+### Dependencies
+  * [TagStructureBinary](
+    https://github.com/Tobi29/ScapesEngine/tree/master/Utils/TagStructureBinary)
+
 # AndroidSQLite
 Glue layer between Android provided SQLite support the the SQLFramework.
 

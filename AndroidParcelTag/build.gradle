@@ -14,9 +14,22 @@
  * limitations under the License.
  */
 
-include "AndroidBackend"
-include "AndroidParcelTag"
-include "AndroidSQLite"
-include "AndroidSSLProvider"
-include "AndroidSysTrace"
-include "OpenAL"
+apply from: "$rootDir/resources/scapesenginemodulekotlin.gradle"
+
+android {
+    defaultConfig {
+        minSdkVersion 1
+        targetSdkVersion 25
+        versionCode = 1
+        versionName = version
+    }
+}
+
+dependencies {
+    compile rootProject.ext.scapesEngineUtils
+    compile rootProject.ext.scapesEngineIOUtils
+    compile rootProject.ext.scapesEngineTagStructureBinary
+    compile rootProject.ext.kotlinLogging
+    compile rootProject.ext.slf4jAPI
+    compile rootProject.ext.kotlinSTD
+}
