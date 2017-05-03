@@ -29,7 +29,4 @@ dependencies {
     compile rootProject.ext.scapesEngineSQLFramework
     compile rootProject.ext.scapesEngineFileSystems
     compile rootProject.ext.scapesEngineUtils
-    compile rootProject.ext.kotlinLogging
-    compile rootProject.ext.slf4jAPI
-    compile rootProject.ext.kotlinSTD
 }

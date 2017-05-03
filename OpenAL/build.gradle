@@ -39,7 +39,3 @@ android {
         }
     }
 }
-
-dependencies {
-    compile rootProject.ext.kotlinSTD
-}

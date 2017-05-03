@@ -29,7 +29,4 @@ android {
 dependencies {
     compile rootProject.ext.scapesEngineServerFramework
     compile rootProject.ext.scapesEngineUtils
-    compile rootProject.ext.kotlinLogging
-    compile rootProject.ext.slf4jAPI
-    compile rootProject.ext.kotlinSTD
 }
