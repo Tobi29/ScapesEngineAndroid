@@ -20,7 +20,7 @@ package org.tobi29.scapes.engine.android.opengles
 
 import android.opengl.GLES20
 import android.opengl.GLES30
-import java.nio.ByteBuffer
+import org.tobi29.scapes.engine.utils.io.ByteBuffer
 
 const val NOOP = -1
 

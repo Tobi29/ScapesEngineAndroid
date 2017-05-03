@@ -59,14 +59,12 @@ task wrapper(type: Wrapper) {
 }
 
 ext {
-    scapesEngineVersion = "03212d33fc"
+    scapesEngineVersion = "9023fd2adc"
 
     scapesEngineEngine =
             "com.github.Tobi29.ScapesEngine:Engine:$scapesEngineVersion"
     scapesEngineUtils =
             "com.github.Tobi29.ScapesEngine:Utils:$scapesEngineVersion"
-    scapesEngineTagStructureBinary =
-            "com.github.Tobi29.ScapesEngine:TagStructureBinary:$scapesEngineVersion"
     scapesEngineIOUtils =
             "com.github.Tobi29.ScapesEngine:IOUtils:$scapesEngineVersion"
     scapesEngineServerFramework =

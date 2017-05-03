@@ -18,10 +18,10 @@ package org.tobi29.scapes.engine.android.opengles
 
 import android.opengl.GLES20
 import android.opengl.GLES30
-import mu.KLogging
 import org.tobi29.scapes.engine.graphics.FramebufferStatus
 import org.tobi29.scapes.engine.graphics.RenderType
 import org.tobi29.scapes.engine.utils.ThreadLocal
+import org.tobi29.scapes.engine.utils.logging.KLogging
 import org.tobi29.scapes.engine.utils.shader.CompiledShader
 import org.tobi29.scapes.engine.utils.shader.ShaderGenerateException
 import org.tobi29.scapes.engine.utils.shader.backend.glsl.GLSLGenerator

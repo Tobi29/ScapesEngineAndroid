@@ -23,9 +23,9 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Bundle
 import android.os.IBinder
-import mu.KLogging
 import org.tobi29.scapes.engine.input.FileType
 import org.tobi29.scapes.engine.utils.io.ReadableByteStream
+import org.tobi29.scapes.engine.utils.logging.KLogging
 
 abstract class ScapesEngineServiceActivity : GLActivity() {
     private var serviceIntent: Intent? = null

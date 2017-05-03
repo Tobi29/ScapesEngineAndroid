@@ -20,10 +20,10 @@ import org.tobi29.scapes.engine.ScapesEngine
 import org.tobi29.scapes.engine.graphics.GL
 import org.tobi29.scapes.engine.graphics.ModelAttribute
 import org.tobi29.scapes.engine.graphics.VertexType
+import org.tobi29.scapes.engine.utils.assert
+import org.tobi29.scapes.engine.utils.io.ByteBuffer
 import org.tobi29.scapes.engine.utils.math.FastMath
 import org.tobi29.scapes.engine.utils.math.round
-import java.nio.ByteBuffer
-import java.util.*
 
 internal class VBO(val engine: ScapesEngine,
                    attributes: List<ModelAttribute>,
@@ -58,7 +58,7 @@ internal class VBO(val engine: ScapesEngine,
 
     fun replaceBuffer(gl: GL,
                       buffer: ByteBuffer) {
-        assert(stored)
+        assert { stored }
         gl.check()
         glBindBuffer(GL_ARRAY_BUFFER, vertexID)
         glBufferData(GL_ARRAY_BUFFER, buffer.capacity(), GL_STREAM_DRAW)
@@ -261,7 +261,7 @@ internal class VBO(val engine: ScapesEngine,
 
     fun store(gl: GL,
               weak: Boolean) {
-        assert(!stored)
+        assert { !stored }
         val data = data ?: throw IllegalStateException(
                 "VBO cannot be stored anymore")
         stored = true
@@ -277,7 +277,7 @@ internal class VBO(val engine: ScapesEngine,
     }
 
     fun dispose(gl: GL) {
-        assert(stored)
+        assert { stored }
         stored = false
         gl.check()
         glDeleteBuffers(vertexID)

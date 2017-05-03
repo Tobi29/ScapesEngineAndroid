@@ -24,9 +24,9 @@ import android.util.SparseArray
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
-import mu.KLogging
 import org.tobi29.scapes.engine.input.*
 import org.tobi29.scapes.engine.utils.EventDispatcher
+import org.tobi29.scapes.engine.utils.logging.KLogging
 import org.tobi29.scapes.engine.utils.math.floor
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -35,7 +35,6 @@ class ScapesEngineView(
         context: Context,
         attrs: AttributeSet? = null
 ) : GLSurfaceView(context, attrs), ControllerTouch {
-    override val events = EventDispatcher()
     val inputManager = context.getSystemService(
             Context.INPUT_SERVICE) as InputManager
     val fingers = ConcurrentHashMap<Int, ControllerTouch.Tracker>()
@@ -221,7 +220,7 @@ class ScapesEngineView(
 
     override fun fingers() = fingers.values.asSequence()
 
-    override fun poll() {}
+    override fun poll(events: EventDispatcher) {}
 
     companion object : KLogging() {
         private val DEADZONES = 0.05

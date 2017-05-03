@@ -104,11 +104,6 @@ abstract class AndroidContainer(
         return ""
     }
 
-    override fun saveFileDialog(extensions: Array<Pair<String, String>>,
-                                title: String): FilePath? {
-        return null
-    }
-
     override fun message(messageType: Container.MessageType,
                          title: String,
                          message: String) {
@@ -144,9 +139,6 @@ abstract class AndroidContainer(
                     Context.INPUT_METHOD_SERVICE) as InputMethodManager
             imm.showSoftInput(editText, InputMethodManager.SHOW_FORCED)
         }
-    }
-
-    override fun openFile(path: FilePath) {
     }
 
     companion object {

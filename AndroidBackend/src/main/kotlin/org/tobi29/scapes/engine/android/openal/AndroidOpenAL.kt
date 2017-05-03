@@ -16,10 +16,10 @@
 
 package org.tobi29.scapes.engine.android.openal
 
-import mu.KLogging
 import org.tobi29.scapes.engine.backends.openal.openal.OpenAL
 import org.tobi29.scapes.engine.sound.AudioFormat
 import org.tobi29.scapes.engine.sound.SoundException
+import org.tobi29.scapes.engine.utils.logging.KLogging
 import org.tobi29.scapes.engine.utils.math.cos
 import org.tobi29.scapes.engine.utils.math.sin
 import org.tobi29.scapes.engine.utils.math.toRad
@@ -29,7 +29,6 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 class AndroidOpenAL : OpenAL {
-
     private val intBuffer = IntArray(1)
     private var directBuffer = ByteArray(0)
 
@@ -45,13 +44,13 @@ class AndroidOpenAL : OpenAL {
         }
     }
 
-    override fun create() {
+    override fun create(speedOfSound: Double) {
         ALAN.create()
         logger.info("OpenAL: ${ALAN.alGetString(
                 ALAN.AL_VERSION)} (Vendor: ${ALAN.alGetString(
                 ALAN.AL_VENDOR)}, Renderer: ${ALAN.alGetString(
                 ALAN.AL_RENDERER)})")
-        ALAN.alSpeedOfSound(343.3f)
+        ALAN.alSpeedOfSound(speedOfSound.toFloat())
         ALAN.alListenerfv(ALAN.AL_ORIENTATION,
                 floatArrayOf(0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f))
         ALAN.alListener3f(ALAN.AL_POSITION, 0.0f, 0.0f, 0.0f)
@@ -93,13 +92,28 @@ class AndroidOpenAL : OpenAL {
     }
 
     override fun setPitch(id: Int,
-                          value: Float) {
-        ALAN.alSourcef(id, ALAN.AL_PITCH, value)
+                          value: Double) {
+        ALAN.alSourcef(id, ALAN.AL_PITCH, value.toFloat())
     }
 
     override fun setGain(id: Int,
-                         value: Float) {
-        ALAN.alSourcef(id, ALAN.AL_GAIN, value)
+                         value: Double) {
+        ALAN.alSourcef(id, ALAN.AL_GAIN, value.toFloat())
+    }
+
+    override fun setReferenceDistance(id: Int,
+                                      value: Double) {
+        ALAN.alSourcef(id, ALAN.AL_REFERENCE_DISTANCE, value.toFloat())
+    }
+
+    override fun setRolloffFactor(id: Int,
+                                  value: Double) {
+        ALAN.alSourcef(id, ALAN.AL_ROLLOFF_FACTOR, value.toFloat())
+    }
+
+    override fun setMaxDistance(id: Int,
+                                value: Double) {
+        ALAN.alSourcef(id, ALAN.AL_MAX_DISTANCE, value.toFloat())
     }
 
     override fun setLooping(id: Int,

@@ -19,7 +19,8 @@ package org.tobi29.scapes.engine.android.opengles
 import org.tobi29.scapes.engine.graphics.GL
 import org.tobi29.scapes.engine.graphics.RenderType
 import org.tobi29.scapes.engine.graphics.Shader
-import java.nio.ByteBuffer
+import org.tobi29.scapes.engine.utils.assert
+import org.tobi29.scapes.engine.utils.io.ByteBuffer
 
 internal class VAOStatic(private val vbo: VBO,
                          index: IntArray,
@@ -78,7 +79,7 @@ internal class VAOStatic(private val vbo: VBO,
     }
 
     override fun store(gl: GL): Boolean {
-        assert(!isStored)
+        assert { !isStored }
         val data = data ?: return false
         if (!vbo.canStore()) {
             return false

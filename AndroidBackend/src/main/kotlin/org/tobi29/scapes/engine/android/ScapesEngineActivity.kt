@@ -20,7 +20,6 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
-import mu.KLogging
 import org.tobi29.scapes.engine.Game
 import org.tobi29.scapes.engine.ScapesEngine
 import org.tobi29.scapes.engine.gui.GuiAction
@@ -30,6 +29,7 @@ import org.tobi29.scapes.engine.utils.io.ReadableByteStream
 import org.tobi29.scapes.engine.utils.io.filesystem.FileCache
 import org.tobi29.scapes.engine.utils.io.filesystem.FilePath
 import org.tobi29.scapes.engine.utils.io.filesystem.path
+import org.tobi29.scapes.engine.utils.logging.KLogging
 import org.tobi29.scapes.engine.utils.tag.MutableTagMap
 import org.tobi29.scapes.engine.utils.task.TaskExecutor
 import kotlin.system.exitProcess
@@ -111,15 +111,6 @@ abstract class ScapesEngineActivity : GLActivity(), Crashable {
                                          typefaceCache: FilePath) : AndroidContainer(
             engine, handler, typefaceCache) {
         override val view get() = this@ScapesEngineActivity.view
-
-        override fun openFileDialog(type: FileType,
-                                    title: String,
-                                    multiple: Boolean,
-                                    result: (String, ReadableByteStream) -> Unit) {
-            handler.post {
-                openFileDialog(type, multiple, result)
-            }
-        }
 
         override fun stop() {
             handler.post {

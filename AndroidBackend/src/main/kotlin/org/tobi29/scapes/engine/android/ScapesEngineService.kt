@@ -22,16 +22,14 @@ import android.content.Intent
 import android.os.Binder
 import android.os.Handler
 import android.os.IBinder
-import mu.KLogging
 import org.tobi29.scapes.engine.Game
 import org.tobi29.scapes.engine.ScapesEngine
 import org.tobi29.scapes.engine.gui.GuiAction
-import org.tobi29.scapes.engine.input.FileType
 import org.tobi29.scapes.engine.utils.Crashable
-import org.tobi29.scapes.engine.utils.io.ReadableByteStream
 import org.tobi29.scapes.engine.utils.io.filesystem.FileCache
 import org.tobi29.scapes.engine.utils.io.filesystem.FilePath
 import org.tobi29.scapes.engine.utils.io.filesystem.path
+import org.tobi29.scapes.engine.utils.logging.KLogging
 import org.tobi29.scapes.engine.utils.tag.MutableTagMap
 import org.tobi29.scapes.engine.utils.task.TaskExecutor
 import java.util.concurrent.atomic.AtomicBoolean
@@ -110,16 +108,6 @@ abstract class ScapesEngineService : Service(), Crashable {
                                         typefaceCache: FilePath) : AndroidContainer(
             engine, handler, typefaceCache) {
         override val view get() = activity?.view
-
-        override fun openFileDialog(type: FileType,
-                                    title: String,
-                                    multiple: Boolean,
-                                    result: (String, ReadableByteStream) -> Unit) {
-            val activity = activity ?: return
-            handler.post {
-                activity.openFileDialog(type, multiple, result)
-            }
-        }
 
         override fun stop() {
             done.set(true)
