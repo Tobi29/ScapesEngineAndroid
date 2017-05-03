@@ -15,7 +15,7 @@
  */
 
 buildscript {
-    def kotlinVersion = "1.1.1"
+    def kotlinVersion = "1.1.2-2"
     def dokkaVersion = "0.9.13"
     def androidBuildVersion = "2.3.0"
     def androidMavenVersion = "1.5"
@@ -53,20 +53,13 @@ allprojects {
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = "3.4.1"
+    gradleVersion = "3.5"
     distributionUrl =
             "https://services.gradle.org/distributions/gradle-${gradleVersion}-all.zip"
 }
 
 ext {
-    kotlinVersion = "1.1.1"
-    kotlinLoggingVersion = "1.4.4"
-    slf4jVersion = "1.7.25"
     scapesEngineVersion = "03212d33fc"
-
-    kotlinLogging = "io.github.microutils:kotlin-logging:$kotlinLoggingVersion"
-    slf4jAPI = "org.slf4j:slf4j-api:$slf4jVersion"
-    kotlinSTD = "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
 
     scapesEngineEngine =
             "com.github.Tobi29.ScapesEngine:Engine:$scapesEngineVersion"

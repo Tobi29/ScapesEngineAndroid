@@ -33,7 +33,4 @@ dependencies {
     compile rootProject.ext.scapesEngineGraphicsUtils
     compile rootProject.ext.scapesEngineShaderCompiler
     compile rootProject.ext.scapesEngineUtils
-    compile rootProject.ext.kotlinLogging
-    compile rootProject.ext.slf4jAPI
-    compile rootProject.ext.kotlinSTD
 }
