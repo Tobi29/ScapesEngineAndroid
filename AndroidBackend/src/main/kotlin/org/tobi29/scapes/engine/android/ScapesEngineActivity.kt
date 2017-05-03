@@ -36,9 +36,9 @@ import kotlin.system.exitProcess
 
 abstract class ScapesEngineActivity : GLActivity(), Crashable {
     private val taskExecutor = TaskExecutor(this, "Activity")
-    private val handler = Handler()
     private var fileConsumer: ((String, ReadableByteStream) -> Unit)? = null
     private var container: AndroidActivityContainer? = null
+    val handler = Handler()
 
     abstract fun onCreateEngine(): Pair<(ScapesEngine) -> Game, MutableTagMap>
 

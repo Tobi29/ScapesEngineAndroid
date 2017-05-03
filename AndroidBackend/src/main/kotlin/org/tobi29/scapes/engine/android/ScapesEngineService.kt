@@ -40,8 +40,8 @@ abstract class ScapesEngineService : Service(), Crashable {
         private set
     private val taskExecutor = TaskExecutor(this, "Service")
     private val done = AtomicBoolean()
-    private val handler = Handler()
-    private var activity: ScapesEngineServiceActivity? = null
+    val handler = Handler()
+    var activity: ScapesEngineServiceActivity? = null
 
     fun activity(activity: ScapesEngineServiceActivity) {
         if (this.activity != null) {
