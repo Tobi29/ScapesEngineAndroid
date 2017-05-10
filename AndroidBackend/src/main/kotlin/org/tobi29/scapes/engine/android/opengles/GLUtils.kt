@@ -23,7 +23,9 @@ import org.tobi29.scapes.engine.graphics.RenderType
 import org.tobi29.scapes.engine.utils.ThreadLocal
 import org.tobi29.scapes.engine.utils.logging.KLogging
 import org.tobi29.scapes.engine.utils.shader.CompiledShader
-import org.tobi29.scapes.engine.utils.shader.ShaderGenerateException
+import org.tobi29.scapes.engine.utils.shader.Expression
+import org.tobi29.scapes.engine.utils.shader.ShaderException
+import org.tobi29.scapes.engine.utils.shader.Uniform
 import org.tobi29.scapes.engine.utils.shader.backend.glsl.GLSLGenerator
 import java.io.IOException
 import java.nio.ByteBuffer
@@ -88,52 +90,52 @@ internal object GLUtils : KLogging() {
         }
     }
 
-    fun createProgram(shader: CompiledShader,
-                      properties: Map<String, String>): Pair<Int, IntArray> {
-        try {
-            val shaderGenerator = SHADER_GENERATOR.get()
-            val fragmentSource = shaderGenerator.generateFragment(shader.scope,
-                    shader, properties)
-            val vertexSource = shaderGenerator.generateVertex(shader.scope,
-                    shader, properties)
-            val vertex = GLES20.glCreateShader(GLES20.GL_VERTEX_SHADER)
-            GLES20.glShaderSource(vertex, vertexSource)
-            GLES20.glCompileShader(vertex)
-            printLogShader(vertex)
-            val fragment = GLES20.glCreateShader(GLES20.GL_FRAGMENT_SHADER)
-            GLES20.glShaderSource(fragment, fragmentSource)
-            GLES20.glCompileShader(fragment)
-            printLogShader(fragment)
-            val program = GLES20.glCreateProgram()
-            GLES20.glAttachShader(program, vertex)
-            GLES20.glAttachShader(program, fragment)
-            GLES20.glLinkProgram(program)
-            val status = readInts { i0 ->
-                GLES20.glGetProgramiv(program, GLES20.GL_LINK_STATUS, i0)
+    fun compileShader(shader: CompiledShader,
+                      properties: Map<String, Expression>) =
+            try {
+                GLSLGenerator.generate(GLSLGenerator.Version.GLES_300, shader,
+                        properties)
+            } catch (e: ShaderException) {
+                throw IOException(e)
             }
-            if (status != GLES20.GL_TRUE) {
-                logger.error { "Failed to link status bar!" }
-                printLogProgram(program)
-            }
-            val uniforms = shader.uniforms()
-            val uniformLocations = IntArray(uniforms.size)
-            for (i in uniforms.indices) {
-                val uniform = uniforms[i]
-                if (uniform == null) {
-                    uniformLocations[i] = -1
-                } else {
-                    uniformLocations[i] = GLES20.glGetUniformLocation(program,
-                            uniform.identifier.name)
-                }
-            }
-            GLES20.glDetachShader(program, vertex)
-            GLES20.glDetachShader(program, fragment)
-            GLES20.glDeleteShader(vertex)
-            GLES20.glDeleteShader(fragment)
-            return Pair(program, uniformLocations)
-        } catch (e: ShaderGenerateException) {
-            throw IOException(e)
+
+    fun createProgram(vertexSource: String,
+                      fragmentSource: String,
+                      uniforms: Array<Uniform?>): Pair<Int, IntArray> {
+        val vertex = GLES20.glCreateShader(GLES20.GL_VERTEX_SHADER)
+        GLES20.glShaderSource(vertex, vertexSource)
+        GLES20.glCompileShader(vertex)
+        printLogShader(vertex)
+        val fragment = GLES20.glCreateShader(GLES20.GL_FRAGMENT_SHADER)
+        GLES20.glShaderSource(fragment, fragmentSource)
+        GLES20.glCompileShader(fragment)
+        printLogShader(fragment)
+        val program = GLES20.glCreateProgram()
+        GLES20.glAttachShader(program, vertex)
+        GLES20.glAttachShader(program, fragment)
+        GLES20.glLinkProgram(program)
+        val status = readInts { i0 ->
+            GLES20.glGetProgramiv(program, GLES20.GL_LINK_STATUS, i0)
         }
+        if (status != GLES20.GL_TRUE) {
+            logger.error { "Failed to link status bar!" }
+            printLogProgram(program)
+        }
+        val uniformLocations = IntArray(uniforms.size)
+        for (i in uniforms.indices) {
+            val uniform = uniforms[i]
+            if (uniform == null) {
+                uniformLocations[i] = -1
+            } else {
+                uniformLocations[i] = GLES20.glGetUniformLocation(program,
+                        uniform.identifier.name)
+            }
+        }
+        GLES20.glDetachShader(program, vertex)
+        GLES20.glDetachShader(program, fragment)
+        GLES20.glDeleteShader(vertex)
+        GLES20.glDeleteShader(fragment)
+        return Pair(program, uniformLocations)
     }
 }
 
