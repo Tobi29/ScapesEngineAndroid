@@ -29,7 +29,6 @@ import org.tobi29.scapes.engine.utils.logging.KLogging
 
 abstract class ScapesEngineServiceActivity : GLActivity() {
     private var serviceIntent: Intent? = null
-    private var fileConsumer: ((String, ReadableByteStream) -> Unit)? = null
     private val connection = ScapesEngineConnection()
 
     protected abstract fun service(): Class<out ScapesEngineService>
@@ -51,27 +50,6 @@ abstract class ScapesEngineServiceActivity : GLActivity() {
         super.onDestroy()
         unbindService(connection)
         serviceIntent = null
-    }
-
-    override fun onActivityResult(requestCode: Int,
-                                  resultCode: Int,
-                                  data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        when (requestCode) {
-            10 -> if (resultCode == Activity.RESULT_OK && data != null) {
-                fileConsumer?.let { consumer ->
-                    acceptFile(contentResolver, consumer, data)
-                    fileConsumer = null
-                }
-            }
-        }
-    }
-
-    fun openFileDialog(type: FileType,
-                       multiple: Boolean,
-                       result: (String, ReadableByteStream) -> Unit) {
-        fileConsumer = result
-        startActivityForResult(openFileIntent(type, multiple), 10)
     }
 
     private inner class ScapesEngineConnection : ServiceConnection {
