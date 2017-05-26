@@ -464,5 +464,5 @@ object AndroidKeyMap {
 
     fun button(id: Int) = BUTTONS[id]
 
-    fun touch() = {}
+    fun touch() {}
 }

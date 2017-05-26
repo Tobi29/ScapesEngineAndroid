@@ -61,9 +61,9 @@ abstract class AndroidContainer(
 
     override fun loadFont(asset: String): Font? {
         try {
-            var font = engine.files[asset + ".otf"].get()
+            var font = engine.files[asset + ".otf"]
             if (!font.exists()) {
-                font = engine.files[asset + ".ttf"].get()
+                font = engine.files[asset + ".ttf"]
             }
             val cache = typefaceCache
             var typeface: Typeface? = null
