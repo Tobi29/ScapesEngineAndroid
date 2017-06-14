@@ -23,21 +23,17 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Bundle
 import android.os.IBinder
-import org.tobi29.scapes.engine.input.FileType
-import org.tobi29.scapes.engine.utils.io.ReadableByteStream
 import org.tobi29.scapes.engine.utils.logging.KLogging
 
-abstract class ScapesEngineServiceActivity : GLActivity() {
+abstract class ScapesEngineServiceActivity : Activity() {
     private var serviceIntent: Intent? = null
     private val connection = ScapesEngineConnection()
+    private var view: ScapesEngineView? = null
 
     protected abstract fun service(): Class<out ScapesEngineService>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        view?.setRenderer(object : ScapesEngineRenderer() {
-            override val container get() = connection.engine?.container
-        })
         serviceIntent = Intent(this, service())
         bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE)
     }
@@ -58,9 +54,14 @@ abstract class ScapesEngineServiceActivity : GLActivity() {
         override fun onServiceConnected(name: ComponentName,
                                         service: IBinder) {
             val engine = (service as ScapesEngineService.ScapesBinder).service
-            if (engine == null) {
+            val container = engine?.container
+            if (container == null) {
                 finishAndRemoveTask()
             } else {
+                view = ScapesEngineView(this@ScapesEngineServiceActivity).also {
+                    container.attachView(it)
+                    setContentView(it)
+                }
                 engine.activity(this@ScapesEngineServiceActivity)
                 this.engine = engine
             }
@@ -68,6 +69,8 @@ abstract class ScapesEngineServiceActivity : GLActivity() {
 
         override fun onServiceDisconnected(name: ComponentName) {
             setContentView(null)
+            view?.let { engine?.container?.detachView(it) }
+            view = null
             engine = null
         }
     }

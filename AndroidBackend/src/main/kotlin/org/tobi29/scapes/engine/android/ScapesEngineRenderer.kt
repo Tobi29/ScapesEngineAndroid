@@ -5,15 +5,14 @@ import org.tobi29.scapes.engine.utils.Sync
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
-abstract class ScapesEngineRenderer : GLSurfaceView.Renderer {
-    abstract val container: AndroidContainer?
+class ScapesEngineRenderer(val container: AndroidContainer) : GLSurfaceView.Renderer {
     private val sync = Sync(60.0, 5000000000L, false, "Rendering")
     private var widthResolution = 0
     private var heightResolution = 0
 
     override fun onSurfaceCreated(gl: GL10,
                                   config: EGLConfig) {
-        container?.engine?.graphics?.reset()
+        container.engine.graphics.reset()
         sync.init()
     }
 
@@ -25,10 +24,9 @@ abstract class ScapesEngineRenderer : GLSurfaceView.Renderer {
     }
 
     override fun onDrawFrame(gl: GL10) {
-        container?.run {
-            view?.let { view ->
-                render(sync.delta(), view, widthResolution, heightResolution)
-            }
+        container.view?.let { view ->
+            container.render(sync.delta(), view, widthResolution,
+                    heightResolution)
         }
         sync.tick()
     }

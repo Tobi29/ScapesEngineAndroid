@@ -16,6 +16,7 @@
 
 package org.tobi29.scapes.engine.android
 
+import android.app.Activity
 import android.os.Bundle
 import android.os.Handler
 import org.tobi29.scapes.engine.Game
@@ -23,42 +24,51 @@ import org.tobi29.scapes.engine.ScapesEngine
 import org.tobi29.scapes.engine.gui.GuiAction
 import org.tobi29.scapes.engine.utils.Crashable
 import org.tobi29.scapes.engine.utils.io.filesystem.FileCache
-import org.tobi29.scapes.engine.utils.io.filesystem.FilePath
 import org.tobi29.scapes.engine.utils.io.filesystem.path
 import org.tobi29.scapes.engine.utils.logging.KLogging
 import org.tobi29.scapes.engine.utils.tag.MutableTagMap
 import org.tobi29.scapes.engine.utils.task.TaskExecutor
 import kotlin.system.exitProcess
 
-abstract class ScapesEngineActivity : GLActivity(), Crashable {
+abstract class ScapesEngineActivity : Activity(), Crashable {
     private val taskExecutor = TaskExecutor(this, "Activity")
-    private var container: AndroidActivityContainer? = null
+    private var container: AndroidContainer? = null
+    private var view: ScapesEngineView? = null
     val handler = Handler()
 
     abstract fun onCreateEngine(): Pair<(ScapesEngine) -> Game, MutableTagMap>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        view?.setRenderer(object : ScapesEngineRenderer() {
-            override val container get() = this@ScapesEngineActivity.container
-        })
         val cache = path(cacheDir.toString()).resolve("AndroidTypeface")
         FileCache.check(cache)
         val (game, configMap) = onCreateEngine()
         val engine = ScapesEngine(game, { engine ->
-            AndroidActivityContainer(engine, cache).also { container = it }
+            AndroidContainer(engine, handler, cache, {
+                handler.post {
+                    finishAndRemoveTask()
+                }
+            }).also { container = it }
         }, taskExecutor, configMap)
+        val container = this.container
+                ?: throw IllegalStateException("No container got created")
+        view = ScapesEngineView(this).also {
+            container.attachView(it)
+            setContentView(it)
+        }
         engine.start()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        view?.onPause()
+        container?.engine?.halt()
     }
 
     override fun onResume() {
         super.onResume()
         container?.engine?.start()
-    }
-
-    override fun onPause() {
-        super.onPause()
-        container?.engine?.halt()
+        view?.onResume()
     }
 
     override fun onBackPressed() {
@@ -67,9 +77,11 @@ abstract class ScapesEngineActivity : GLActivity(), Crashable {
 
     override fun onDestroy() {
         super.onDestroy()
+        view?.let { container?.detachView(it) }
         container?.engine?.dispose()
         taskExecutor.shutdown()
         container = null
+        view = null
     }
 
     override fun crash(e: Throwable): Nothing {
@@ -78,18 +90,6 @@ abstract class ScapesEngineActivity : GLActivity(), Crashable {
             e.printStackTrace()
         } finally {
             exitProcess(1)
-        }
-    }
-
-    inner class AndroidActivityContainer(engine: ScapesEngine,
-                                         typefaceCache: FilePath) : AndroidContainer(
-            engine, handler, typefaceCache) {
-        override val view get() = this@ScapesEngineActivity.view
-
-        override fun stop() {
-            handler.post {
-                finishAndRemoveTask()
-            }
         }
     }
 

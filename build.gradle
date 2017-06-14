@@ -60,7 +60,7 @@ task wrapper(type: Wrapper) {
 
 ext {
     kotlinVersion = "1.1.2-2"
-    scapesEngineVersion = "35dd63ca9a"
+    scapesEngineVersion = "62d5b772c8"
 
     kotlinSTD = "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
     scapesEngineEngine =

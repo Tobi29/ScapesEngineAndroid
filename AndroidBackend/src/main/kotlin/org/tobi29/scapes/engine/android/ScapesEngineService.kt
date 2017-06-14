@@ -27,7 +27,6 @@ import org.tobi29.scapes.engine.ScapesEngine
 import org.tobi29.scapes.engine.gui.GuiAction
 import org.tobi29.scapes.engine.utils.Crashable
 import org.tobi29.scapes.engine.utils.io.filesystem.FileCache
-import org.tobi29.scapes.engine.utils.io.filesystem.FilePath
 import org.tobi29.scapes.engine.utils.io.filesystem.path
 import org.tobi29.scapes.engine.utils.logging.KLogging
 import org.tobi29.scapes.engine.utils.tag.MutableTagMap
@@ -65,7 +64,13 @@ abstract class ScapesEngineService : Service(), Crashable {
         FileCache.check(cache)
         val (game, configMap) = onCreateEngine()
         val engine = ScapesEngine(game, { engine ->
-            AndroidServiceContainer(engine, cache).also { container = it }
+            AndroidContainer(engine, handler, cache, {
+                done.set(true)
+                handler.post {
+                    activity?.finishAndRemoveTask()
+                    stopSelf()
+                }
+            }).also { container = it }
         }, taskExecutor, configMap)
         engine.start()
     }
@@ -101,20 +106,6 @@ abstract class ScapesEngineService : Service(), Crashable {
             e.printStackTrace()
         } finally {
             exitProcess(1)
-        }
-    }
-
-    inner class AndroidServiceContainer(engine: ScapesEngine,
-                                        typefaceCache: FilePath) : AndroidContainer(
-            engine, handler, typefaceCache) {
-        override val view get() = activity?.view
-
-        override fun stop() {
-            done.set(true)
-            handler.post {
-                activity?.finishAndRemoveTask()
-                stopSelf()
-            }
         }
     }
 
