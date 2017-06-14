@@ -96,14 +96,6 @@ Glue layer between Android provided SQLite support the the SQLFramework.
   * [SQLFramework](
     https://github.com/Tobi29/ScapesEngine/tree/master/SQLFramework)
 
-# AndroidSSLProvider
-Alternative backend for SSL certificate handling, required on Android due to
-limited standard library.
-
-### Dependencies
-  * [ServerFramework](
-    https://github.com/Tobi29/ScapesEngine/tree/master/ServerFramework)
-
 # AndroidSysTrace
 Glue layer between the profiler used in the engine and systrace.
 

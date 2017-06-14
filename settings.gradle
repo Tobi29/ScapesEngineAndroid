@@ -17,6 +17,5 @@
 include "AndroidBackend"
 include "AndroidParcelTag"
 include "AndroidSQLite"
-include "AndroidSSLProvider"
 include "AndroidSysTrace"
 include "OpenAL"
