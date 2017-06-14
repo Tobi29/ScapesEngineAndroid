@@ -59,15 +59,25 @@ private fun Any.primitiveAnyToTag() = when (this) {
     is Byte -> toTag()
     is ByteArray -> toTag()
     is Short -> toTag()
-    is ShortArray -> TagList { this@primitiveAnyToTag.forEach { add(it) } }
+    is ShortArray -> TagList {
+        this@primitiveAnyToTag.forEach { add(it.toTag()) }
+    }
     is Int -> toTag()
-    is IntArray -> TagList { this@primitiveAnyToTag.forEach { add(it) } }
+    is IntArray -> TagList {
+        this@primitiveAnyToTag.forEach { add(it.toTag()) }
+    }
     is Long -> toTag()
-    is LongArray -> TagList { this@primitiveAnyToTag.forEach { add(it) } }
+    is LongArray -> TagList {
+        this@primitiveAnyToTag.forEach { add(it.toTag()) }
+    }
     is Float -> toTag()
-    is FloatArray -> TagList { this@primitiveAnyToTag.forEach { add(it) } }
+    is FloatArray -> TagList {
+        this@primitiveAnyToTag.forEach { add(it.toTag()) }
+    }
     is Double -> toTag()
-    is DoubleArray -> TagList { this@primitiveAnyToTag.forEach { add(it) } }
+    is DoubleArray -> TagList {
+        this@primitiveAnyToTag.forEach { add(it.toTag()) }
+    }
     is String -> toTag()
     else -> null
 }
