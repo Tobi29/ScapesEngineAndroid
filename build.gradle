@@ -59,8 +59,10 @@ task wrapper(type: Wrapper) {
 }
 
 ext {
+    kotlinVersion = "1.1.2-2"
     scapesEngineVersion = "35dd63ca9a"
 
+    kotlinSTD = "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
     scapesEngineEngine =
             "com.github.Tobi29.ScapesEngine:Engine:$scapesEngineVersion"
     scapesEngineUtils =
@@ -73,8 +75,12 @@ ext {
             "com.github.Tobi29.ScapesEngine:FileSystems:$scapesEngineVersion"
     scapesEngineGraphicsUtils =
             "com.github.Tobi29.ScapesEngine:GraphicsUtils:$scapesEngineVersion"
+    scapesEngineMathUtils =
+            "com.github.Tobi29.ScapesEngine:MathUtils:$scapesEngineVersion"
     scapesEngineOpenALSounds =
             "com.github.Tobi29.ScapesEngine:OpenALSounds:$scapesEngineVersion"
     scapesEngineShaderCompiler =
             "com.github.Tobi29.ScapesEngine:ShaderCompiler:$scapesEngineVersion"
+    scapesEngineThreadUtils =
+            "com.github.Tobi29.ScapesEngine:ThreadUtils:$scapesEngineVersion"
 }

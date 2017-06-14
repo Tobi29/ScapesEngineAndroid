@@ -27,10 +27,14 @@ android {
 
 dependencies {
     compile project(":OpenAL")
+    compile rootProject.ext.kotlinSTD
     compile rootProject.ext.scapesEngineEngine
     compile rootProject.ext.scapesEngineOpenALSounds
     compile rootProject.ext.scapesEngineFileSystems
     compile rootProject.ext.scapesEngineGraphicsUtils
+    compile rootProject.ext.scapesEngineIOUtils
+    compile rootProject.ext.scapesEngineMathUtils
     compile rootProject.ext.scapesEngineShaderCompiler
+    compile rootProject.ext.scapesEngineThreadUtils
     compile rootProject.ext.scapesEngineUtils
 }

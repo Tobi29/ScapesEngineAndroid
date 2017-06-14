@@ -26,6 +26,7 @@ android {
 }
 
 dependencies {
+    compile rootProject.ext.kotlinSTD
     compile rootProject.ext.scapesEngineUtils
     compile rootProject.ext.scapesEngineIOUtils
 }
