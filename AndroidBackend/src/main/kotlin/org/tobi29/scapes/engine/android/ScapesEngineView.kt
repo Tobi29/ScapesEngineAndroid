@@ -37,10 +37,12 @@ class ScapesEngineView(
 ) : GLSurfaceView(context, attrs), ControllerTouch {
     val fingers = ConcurrentHashMap<Int, ControllerTouch.Tracker>()
     val deviceEvents = ConcurrentLinkedQueue<Any>()
-    val containerWidth get() = floor(width / density)
-    val containerHeight get() = floor(height / density)
-    // TODO: Implement proper density support
-    val density get() = 3.0
+    val containerWidth get() = floor(width / densityX)
+    val containerHeight get() = floor(height / densityY)
+    val densityX get() =
+    (display?.displayMetrics?.xdpi?.toDouble() ?: 440.0) / 145.0
+    val densityY get() =
+    (display?.displayMetrics?.ydpi?.toDouble() ?: 440.0) / 145.0
     private val inputManager = context.getSystemService(
             Context.INPUT_SERVICE) as InputManager
     private val devices = SparseArray<Controller>()
@@ -107,22 +109,21 @@ class ScapesEngineView(
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         super.onTouchEvent(event)
-        val density = density
         val device = event.device ?: return true
         if (device.isType(InputDevice.SOURCE_TOUCHSCREEN)) {
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                     val index = event.actionIndex
                     val tracker = ControllerTouch.Tracker()
-                    tracker.pos.set(event.getX(index) / density,
-                            event.getY(index) / density)
+                    tracker.pos.set(event.getX(index) / densityX,
+                            event.getY(index) / densityY)
                     val id = event.getPointerId(index)
                     fingers.put(id, tracker)
                 }
                 MotionEvent.ACTION_MOVE -> for ((key, tracker) in fingers) {
                     val index = event.findPointerIndex(key)
-                    tracker.pos.set(event.getX(index) / density,
-                            event.getY(index) / density)
+                    tracker.pos.set(event.getX(index) / densityX,
+                            event.getY(index) / densityY)
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_CANCEL -> {
                     val id = event.getPointerId(event.actionIndex)
@@ -134,7 +135,8 @@ class ScapesEngineView(
             when (controller) {
                 is ControllerDefault -> {
                     if (device.isType(InputDevice.SOURCE_MOUSE)) {
-                        handleMousePointer(event, density, controller)
+                        handleMousePointer(event, densityX, densityY,
+                                controller)
                     }
                 }
             }
@@ -144,7 +146,6 @@ class ScapesEngineView(
 
     override fun onGenericMotionEvent(event: MotionEvent): Boolean {
         super.onGenericMotionEvent(event)
-        val density = density
         val controller = devices[event.deviceId]
         val device = event.device ?: return true
         when (controller) {
@@ -171,7 +172,7 @@ class ScapesEngineView(
                             }
                         }
                     }
-                    handleMousePointer(event, density, controller)
+                    handleMousePointer(event, densityX, densityY, controller)
                 }
             }
         }
@@ -230,12 +231,13 @@ class ScapesEngineView(
         }
 
         private fun handleMousePointer(event: MotionEvent,
-                                       density: Double,
+                                       densityX: Double,
+                                       densityY: Double,
                                        controller: ControllerDefault) {
             handleMousePointer(event, { x, y ->
-                controller.set(x / density, y / density)
+                controller.set(x / densityX, y / densityY)
             }, { x, y ->
-                controller.addDelta(x / density, y / density)
+                controller.addDelta(x / densityX, y / densityY)
             })
         }
 
