@@ -16,7 +16,7 @@
 
 buildscript {
     def kotlinVersion = "1.1.2-2"
-    def dokkaVersion = "0.9.13"
+    def dokkaVersion = "0.9.14"
     def androidBuildVersion = "2.3.0"
     def androidMavenVersion = "1.5"
 
@@ -59,8 +59,8 @@ task wrapper(type: Wrapper) {
 }
 
 ext {
-    kotlinVersion = "1.1.2-2"
-    scapesEngineVersion = "62d5b772c8"
+    kotlinVersion = "1.1.2-5"
+    scapesEngineVersion = "0be64e5ce9"
 
     kotlinSTD = "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
     scapesEngineEngine =
