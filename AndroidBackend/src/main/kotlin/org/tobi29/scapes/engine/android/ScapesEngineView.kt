@@ -35,14 +35,14 @@ class ScapesEngineView(
         context: Context,
         attrs: AttributeSet? = null
 ) : GLSurfaceView(context, attrs), ControllerTouch {
-    val inputManager = context.getSystemService(
-            Context.INPUT_SERVICE) as InputManager
     val fingers = ConcurrentHashMap<Int, ControllerTouch.Tracker>()
     val deviceEvents = ConcurrentLinkedQueue<Any>()
     val containerWidth get() = floor(width / density)
     val containerHeight get() = floor(height / density)
     // TODO: Implement proper density support
     val density get() = 3.0
+    private val inputManager = context.getSystemService(
+            Context.INPUT_SERVICE) as InputManager
     private val devices = SparseArray<Controller>()
     private val defaultController = object : ControllerDefault() {
         override val isModifierDown get() =
@@ -208,14 +208,8 @@ class ScapesEngineView(
         return true
     }
 
-    override fun onPause() {
-        super.onPause()
+    fun dispose() {
         inputManager.unregisterInputDeviceListener(deviceListener)
-    }
-
-    override fun onResume() {
-        super.onResume()
-        inputManager.registerInputDeviceListener(deviceListener, handler)
     }
 
     override fun fingers() = fingers.values.asSequence()

@@ -39,13 +39,42 @@ abstract class ScapesEngineServiceActivity : Activity() {
     }
 
     override fun onBackPressed() {
+        println("OK")
         connection.engine?.onBackPressed()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        view?.onPause()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        view?.onResume()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         unbindService(connection)
+        disposeView()
         serviceIntent = null
+    }
+
+    private fun initView(container: AndroidContainer): ScapesEngineView {
+        disposeView()
+        return ScapesEngineView(this@ScapesEngineServiceActivity).also {
+            container.attachView(it)
+            setContentView(it)
+            view = it
+        }
+    }
+
+    private fun disposeView() {
+        view?.let {
+            connection.engine?.container?.detachView(it)
+            it.dispose()
+            view = null
+        }
     }
 
     private inner class ScapesEngineConnection : ServiceConnection {
@@ -53,24 +82,20 @@ abstract class ScapesEngineServiceActivity : Activity() {
 
         override fun onServiceConnected(name: ComponentName,
                                         service: IBinder) {
+            disposeView()
             val engine = (service as ScapesEngineService.ScapesBinder).service
             val container = engine?.container
             if (container == null) {
                 finishAndRemoveTask()
             } else {
-                view = ScapesEngineView(this@ScapesEngineServiceActivity).also {
-                    container.attachView(it)
-                    setContentView(it)
-                }
+                initView(container)
                 engine.activity(this@ScapesEngineServiceActivity)
                 this.engine = engine
             }
         }
 
         override fun onServiceDisconnected(name: ComponentName) {
-            setContentView(null)
-            view?.let { engine?.container?.detachView(it) }
-            view = null
+            disposeView()
             engine = null
         }
     }

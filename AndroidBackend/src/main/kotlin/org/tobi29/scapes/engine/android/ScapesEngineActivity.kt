@@ -77,11 +77,16 @@ abstract class ScapesEngineActivity : Activity(), Crashable {
 
     override fun onDestroy() {
         super.onDestroy()
-        view?.let { container?.detachView(it) }
-        container?.engine?.dispose()
+        view?.let {
+            container?.detachView(it)
+            it.dispose()
+            view = null
+        }
+        container?.let {
+            it.engine.dispose()
+            container = null
+        }
         taskExecutor.shutdown()
-        container = null
-        view = null
     }
 
     override fun crash(e: Throwable): Nothing {
