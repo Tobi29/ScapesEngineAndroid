@@ -39,7 +39,6 @@ abstract class ScapesEngineServiceActivity : Activity() {
     }
 
     override fun onBackPressed() {
-        println("OK")
         connection.engine?.onBackPressed()
     }
 
