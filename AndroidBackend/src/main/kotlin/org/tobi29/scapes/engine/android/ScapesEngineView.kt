@@ -39,10 +39,8 @@ class ScapesEngineView(
     val deviceEvents = ConcurrentLinkedQueue<Any>()
     val containerWidth get() = floor(width / densityX)
     val containerHeight get() = floor(height / densityY)
-    val densityX get() =
-    (display?.displayMetrics?.xdpi?.toDouble() ?: 440.0) / 145.0
-    val densityY get() =
-    (display?.displayMetrics?.ydpi?.toDouble() ?: 440.0) / 145.0
+    var densityX = 1.0
+    var densityY = 1.0
     private val inputManager = context.getSystemService(
             Context.INPUT_SERVICE) as InputManager
     private val devices = SparseArray<Controller>()
@@ -207,6 +205,20 @@ class ScapesEngineView(
             }
         }
         return true
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        display?.displayMetrics?.let { displayMetrics ->
+            densityX = displayMetrics.xdpi.toDouble() / 145.0
+            densityY = displayMetrics.ydpi.toDouble() / 145.0
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        densityX = 1.0
+        densityY = 1.0
     }
 
     fun dispose() {
