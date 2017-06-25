@@ -285,7 +285,7 @@ object ALAN {
         System.loadLibrary("openal")
     }
 
-    external fun create(): Boolean  // Must be called once, before calling other AL methods!
+    external fun create(contextAttributes: IntArray? = null): Boolean  // Must be called once, before calling other AL methods!
 
     external fun destroy()  // Must be called before shutting down the app!
 
