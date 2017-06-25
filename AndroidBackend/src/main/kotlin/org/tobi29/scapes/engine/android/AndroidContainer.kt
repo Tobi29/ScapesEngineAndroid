@@ -24,13 +24,15 @@ import java.nio.ByteOrder
 
 class AndroidContainer(
         override val engine: ScapesEngine,
+        context: Context,
         private val handler: Handler,
         private val typefaceCache: FilePath,
         private val stop: () -> Unit
 ) : Container {
     val view get() = attachedView.get()
     override val gos = GOSAndroidGLES(engine)
-    override val sounds = OpenALSoundSystem(engine, AndroidOpenAL(), 16, 50.0)
+    override val sounds = OpenALSoundSystem(engine, AndroidOpenAL(context), 16,
+            50.0)
     override val formFactor = Container.FormFactor.PHONE
     override val containerWidth get() = view?.containerWidth ?: 1
     override val containerHeight get() = view?.containerHeight ?: 1

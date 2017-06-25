@@ -16,6 +16,8 @@
 
 package org.tobi29.scapes.engine.android.openal
 
+import android.content.Context
+import android.media.AudioManager
 import org.tobi29.scapes.engine.backends.openal.openal.OpenAL
 import org.tobi29.scapes.engine.sound.AudioFormat
 import org.tobi29.scapes.engine.sound.SoundException
@@ -28,7 +30,7 @@ import paulscode.android.sound.ALAN
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-class AndroidOpenAL : OpenAL {
+class AndroidOpenAL(private val context: Context) : OpenAL {
     private val intBuffer = IntArray(1)
     private var directBuffer = ByteArray(0)
 
@@ -45,7 +47,13 @@ class AndroidOpenAL : OpenAL {
     }
 
     override fun create(speedOfSound: Double) {
-        ALAN.create()
+        val audioManager = context.getSystemService(
+                Context.AUDIO_SERVICE) as AudioManager
+        val contextAttributes = IntArray(3)
+        contextAttributes[0] = ALAN.ALC_FREQUENCY
+        contextAttributes[1] = audioManager.getProperty(
+                AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE).toInt()
+        ALAN.create(contextAttributes)
         logger.info("OpenAL: ${ALAN.alGetString(
                 ALAN.AL_VERSION)} (Vendor: ${ALAN.alGetString(
                 ALAN.AL_VENDOR)}, Renderer: ${ALAN.alGetString(

@@ -44,7 +44,7 @@ abstract class ScapesEngineActivity : Activity(), Crashable {
         FileCache.check(cache)
         val (game, configMap) = onCreateEngine()
         val engine = ScapesEngine(game, { engine ->
-            AndroidContainer(engine, handler, cache, {
+            AndroidContainer(engine, this, handler, cache, {
                 handler.post {
                     finishAndRemoveTask()
                 }
