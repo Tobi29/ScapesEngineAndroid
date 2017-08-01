@@ -19,22 +19,21 @@ apply from: "$rootDir/resources/scapesenginemodulekotlin.gradle"
 android {
     defaultConfig {
         minSdkVersion 18
-        targetSdkVersion 25
+        targetSdkVersion 26
         versionCode = 1
         versionName = version
     }
 }
 
 dependencies {
-    compile project(":OpenAL")
-    compile rootProject.ext.kotlinSTD
-    compile rootProject.ext.scapesEngineEngine
-    compile rootProject.ext.scapesEngineOpenALSounds
-    compile rootProject.ext.scapesEngineFileSystems
-    compile rootProject.ext.scapesEngineGraphicsUtils
-    compile rootProject.ext.scapesEngineIOUtils
-    compile rootProject.ext.scapesEngineMathUtils
-    compile rootProject.ext.scapesEngineShaderCompiler
-    compile rootProject.ext.scapesEngineThreadUtils
-    compile rootProject.ext.scapesEngineUtils
+    implementation project(":OpenAL")
+    implementation rootProject.ext.scapesEngineEngineJVM
+    implementation rootProject.ext.scapesEngineOpenALSoundsJVM
+    implementation rootProject.ext.scapesEngineFileSystemsJVM
+    implementation rootProject.ext.scapesEngineGraphicsUtilsJVM
+    implementation rootProject.ext.scapesEngineIOUtilsJVM
+    implementation rootProject.ext.scapesEngineMathUtilsJVM
+    implementation rootProject.ext.scapesEngineShaderCompilerJVM
+    implementation rootProject.ext.scapesEngineThreadUtilsJVM
+    implementation rootProject.ext.scapesEngineUtilsJVM
 }

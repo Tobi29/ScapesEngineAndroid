@@ -15,13 +15,20 @@
  */
 
 buildscript {
-    def kotlinVersion = "1.1.3"
+    def kotlinVersion = "1.1.4-eap-54"
     def dokkaVersion = "0.9.14"
-    def androidBuildVersion = "2.3.0"
+    def androidBuildVersion = "3.0.0-alpha5"
     def androidMavenVersion = "1.5"
 
     repositories {
         jcenter()
+        google()
+        maven {
+            url "https://dl.bintray.com/kotlin/kotlin-dev"
+        }
+        maven {
+            url "https://jitpack.io"
+        }
     }
 
     dependencies {
@@ -43,9 +50,11 @@ allprojects {
 
     repositories {
         jcenter()
+        google()
         maven {
-            url "https://dl.bintray.com/kotlin/kotlin-eap-1.1"
+            url "https://dl.bintray.com/kotlin/kotlin-dev"
         }
+        mavenLocal()
         maven {
             url "https://jitpack.io"
         }
@@ -53,34 +62,32 @@ allprojects {
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = "4.0"
+    gradleVersion = "4.1-rc-2"
     distributionUrl =
             "https://services.gradle.org/distributions/gradle-${gradleVersion}-all.zip"
 }
 
 ext {
-    kotlinVersion = "1.1.3"
-    scapesEngineVersion = "0980a4ca97"
+    scapesEngineVersion = "0.0.1"
 
-    kotlinSTD = "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
-    scapesEngineEngine =
-            "com.github.Tobi29.ScapesEngine:Engine:$scapesEngineVersion"
-    scapesEngineUtils =
-            "com.github.Tobi29.ScapesEngine:Utils:$scapesEngineVersion"
-    scapesEngineIOUtils =
-            "com.github.Tobi29.ScapesEngine:IOUtils:$scapesEngineVersion"
-    scapesEngineSQLFramework =
-            "com.github.Tobi29.ScapesEngine:SQLFramework:$scapesEngineVersion"
-    scapesEngineFileSystems =
-            "com.github.Tobi29.ScapesEngine:FileSystems:$scapesEngineVersion"
-    scapesEngineGraphicsUtils =
-            "com.github.Tobi29.ScapesEngine:GraphicsUtils:$scapesEngineVersion"
-    scapesEngineMathUtils =
-            "com.github.Tobi29.ScapesEngine:MathUtils:$scapesEngineVersion"
-    scapesEngineOpenALSounds =
-            "com.github.Tobi29.ScapesEngine:OpenALSounds:$scapesEngineVersion"
-    scapesEngineShaderCompiler =
-            "com.github.Tobi29.ScapesEngine:ShaderCompiler:$scapesEngineVersion"
-    scapesEngineThreadUtils =
-            "com.github.Tobi29.ScapesEngine:ThreadUtils:$scapesEngineVersion"
+    scapesEngineEngineJVM =
+            "com.github.Tobi29.ScapesEngine:EngineJVM:$scapesEngineVersion"
+    scapesEngineUtilsJVM =
+            "com.github.Tobi29.ScapesEngine:UtilsJVM:$scapesEngineVersion"
+    scapesEngineIOUtilsJVM =
+            "com.github.Tobi29.ScapesEngine:IOUtilsJVM:$scapesEngineVersion"
+    scapesEngineSQLFrameworkJVM =
+            "com.github.Tobi29.ScapesEngine:SQLFrameworkJVM:$scapesEngineVersion"
+    scapesEngineFileSystemsJVM =
+            "com.github.Tobi29.ScapesEngine:FileSystemsJVM:$scapesEngineVersion"
+    scapesEngineGraphicsUtilsJVM =
+            "com.github.Tobi29.ScapesEngine:GraphicsUtilsJVM:$scapesEngineVersion"
+    scapesEngineMathUtilsJVM =
+            "com.github.Tobi29.ScapesEngine:MathUtilsJVM:$scapesEngineVersion"
+    scapesEngineOpenALSoundsJVM =
+            "com.github.Tobi29.ScapesEngine:OpenALSoundsJVM:$scapesEngineVersion"
+    scapesEngineShaderCompilerJVM =
+            "com.github.Tobi29.ScapesEngine:ShaderCompilerJVM:$scapesEngineVersion"
+    scapesEngineThreadUtilsJVM =
+            "com.github.Tobi29.ScapesEngine:ThreadUtilsJVM:$scapesEngineVersion"
 }

@@ -19,15 +19,14 @@ apply from: "$rootDir/resources/scapesenginemodulekotlin.gradle"
 android {
     defaultConfig {
         minSdkVersion 11
-        targetSdkVersion 25
+        targetSdkVersion 26
         versionCode = 1
         versionName = version
     }
 }
 
 dependencies {
-    compile rootProject.ext.kotlinSTD
-    compile rootProject.ext.scapesEngineSQLFramework
-    compile rootProject.ext.scapesEngineFileSystems
-    compile rootProject.ext.scapesEngineUtils
+    implementation rootProject.ext.scapesEngineSQLFrameworkJVM
+    implementation rootProject.ext.scapesEngineFileSystemsJVM
+    implementation rootProject.ext.scapesEngineUtilsJVM
 }
