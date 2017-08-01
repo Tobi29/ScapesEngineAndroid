@@ -15,12 +15,14 @@ import org.tobi29.scapes.engine.backends.openal.openal.OpenALSoundSystem
 import org.tobi29.scapes.engine.graphics.Font
 import org.tobi29.scapes.engine.gui.GuiController
 import org.tobi29.scapes.engine.utils.AtomicReference
+import org.tobi29.scapes.engine.utils.io.ByteBuffer
+import org.tobi29.scapes.engine.utils.io.IOException
+import org.tobi29.scapes.engine.utils.io.NativeByteBufferProvider
+import org.tobi29.scapes.engine.utils.io.ReadSource
 import org.tobi29.scapes.engine.utils.io.filesystem.FileCache
 import org.tobi29.scapes.engine.utils.io.filesystem.FilePath
+import org.tobi29.scapes.engine.utils.logging.KLogging
 import java.io.File
-import java.io.IOException
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 class AndroidContainer(
         override val engine: ScapesEngine,
@@ -38,6 +40,7 @@ class AndroidContainer(
     override val containerHeight get() = view?.containerHeight ?: 1
     private val gl = GLAndroidGLES(gos)
     private val attachedView = AtomicReference<ScapesEngineView?>()
+    private var renderThread = AtomicReference<Thread?>(null)
 
     fun render(delta: Double,
                view: ScapesEngineView,
@@ -46,7 +49,17 @@ class AndroidContainer(
         if (view != attachedView.get()) {
             throw IllegalStateException("Different view attached")
         }
-        engine.graphics.render(gl, delta, width, height)
+        val currentThread = Thread.currentThread()
+        if (!renderThread.compareAndSet(null, currentThread)) {
+            throw IllegalStateException("Rendering twice at the same time")
+        }
+        try {
+            engine.graphics.render(gl, delta, width, height)
+        } finally {
+            if (!renderThread.compareAndSet(currentThread, null)) {
+                throw IllegalStateException("Rendering twice at the same time")
+            }
+        }
     }
 
     fun attachView(view: ScapesEngineView) {
@@ -74,37 +87,34 @@ class AndroidContainer(
         }
     }
 
-    override fun loadFont(asset: String): Font? {
+    override fun loadFont(asset: ReadSource): Font? {
         try {
-            var font = engine.files[asset + ".otf"]
-            if (!font.exists()) {
-                font = engine.files[asset + ".ttf"]
-            }
             val cache = typefaceCache
             var typeface: Typeface? = null
             while (typeface == null) {
                 val file = FileCache.retrieve(cache,
-                        FileCache.store(cache, font))
+                        FileCache.store(cache, asset))
                 try {
                     if (file != null) {
-                        typeface = Typeface.createFromFile(
-                                File(file.toUri()))
+                        typeface = Typeface.createFromFile(File(file.toUri()))
                     }
                 } catch (e: RuntimeException) {
-                    ScapesEngineService.logger.warn(
-                            e) { "Failed to load typeface from cache" }
+                    logger.warn(e) { "Failed to load typeface from cache" }
                 }
             }
             return AndroidFont(typeface)
         } catch (e: IOException) {
-            ScapesEngineService.logger.error(e) { "Failed to load font" }
+            logger.error(e) { "Failed to load font" }
         }
         return null
     }
 
     override fun allocate(capacity: Int): ByteBuffer {
-        return ByteBuffer.allocateDirect(capacity).order(
-                ByteOrder.nativeOrder())
+        return NativeByteBufferProvider.allocate(capacity)
+    }
+
+    override fun reallocate(buffer: ByteBuffer): ByteBuffer {
+        return NativeByteBufferProvider.reallocate(buffer)
     }
 
     override fun run() {
@@ -156,11 +166,11 @@ class AndroidContainer(
         }
     }
 
-    override fun isRenderCall() = gl.isRenderCall()
+    override fun isRenderCall() = Thread.currentThread() === renderThread
 
     override fun stop() = stop.invoke()
 
-    companion object {
+    companion object : KLogging() {
         init {
             AndroidKeyMap.touch()
         }

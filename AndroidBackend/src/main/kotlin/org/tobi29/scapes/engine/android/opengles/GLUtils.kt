@@ -311,3 +311,7 @@ inline fun readInts(block: (IntBuffer, IntBuffer, IntBuffer) -> Unit) =
             block(i0, i1, i2)
             Triple(i0[0], i1[0], i2[0])
         }
+
+internal class CurrentFBO {
+    var current: Int = 0
+}

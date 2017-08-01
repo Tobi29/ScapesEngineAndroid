@@ -96,7 +96,7 @@ class GLAndroidGLES(gos: GraphicsObjectSupplier) : GL(gos) {
                                width: Int,
                                height: Int) {
         glEnable(GL_SCISSOR_TEST)
-        glScissor(x, contentHeight() - y - height, width, height)
+        glScissor(x, contentHeight - y - height, width, height)
     }
 
     override fun setBlending(mode: BlendingMode) {

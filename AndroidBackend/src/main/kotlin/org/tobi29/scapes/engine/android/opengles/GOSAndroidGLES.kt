@@ -28,6 +28,7 @@ class GOSAndroidGLES(override val engine: ScapesEngine) : GraphicsObjectSupplier
     override val textureTracker = GraphicsObjectTracker<Texture>()
     override val fboTracker = GraphicsObjectTracker<Framebuffer>()
     override val shaderTracker = GraphicsObjectTracker<Shader>()
+    private val currentFBO = CurrentFBO()
 
     override fun createTexture(width: Int,
                                height: Int,
@@ -49,8 +50,8 @@ class GOSAndroidGLES(override val engine: ScapesEngine) : GraphicsObjectSupplier
                                    alpha: Boolean,
                                    minFilter: TextureFilter,
                                    magFilter: TextureFilter): Framebuffer {
-        return FBO(engine, width, height, colorAttachments, depth, hdr,
-                alpha, minFilter, magFilter)
+        return FBO(engine, currentFBO, width, height, colorAttachments, depth,
+                hdr, alpha, minFilter, magFilter)
     }
 
     override fun createModelFast(attributes: List<ModelAttribute>,

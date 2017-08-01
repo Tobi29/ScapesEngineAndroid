@@ -21,6 +21,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Typeface
 import org.tobi29.scapes.engine.gui.GlyphRenderer
+import org.tobi29.scapes.engine.utils.io.ByteBufferProvider
 import org.tobi29.scapes.engine.utils.math.round
 import java.nio.ByteBuffer
 
@@ -77,7 +78,7 @@ class AndroidGlyphRenderer(private val typeface: Typeface,
     }
 
     override fun page(id: Int,
-                      bufferSupplier: (Int) -> ByteBuffer): ByteBuffer {
+                      bufferProvider: ByteBufferProvider): ByteBuffer {
         val bitmap = Bitmap.createBitmap(imageSize, imageSize,
                 Bitmap.Config.ARGB_8888)
         bitmap.density = 96
@@ -98,7 +99,7 @@ class AndroidGlyphRenderer(private val typeface: Typeface,
                 i++
             }
         }
-        val buffer = bufferSupplier(imageSize * imageSize shl 2)
+        val buffer = bufferProvider.allocate(imageSize * imageSize shl 2)
         val pixels = IntArray(imageSize * imageSize)
         bitmap.getPixels(pixels, 0, imageSize, 0, 0, imageSize, imageSize)
         i = 0
