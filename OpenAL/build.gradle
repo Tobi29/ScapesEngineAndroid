@@ -19,7 +19,7 @@ apply from: "$rootDir/resources/scapesenginemodulekotlin.gradle"
 android {
     defaultConfig {
         minSdkVersion 9
-        targetSdkVersion 25
+        targetSdkVersion 26
         versionCode = 1
         versionName = version
         consumerProguardFiles "proguard-rules.pro"

@@ -19,7 +19,7 @@ apply plugin: "kotlin-android"
 apply plugin: "com.github.dcendents.android-maven"
 
 android {
-    compileSdkVersion = 25
+    compileSdkVersion = 26
     buildToolsVersion = androidBuildToolsVersion
 
     lintOptions {
