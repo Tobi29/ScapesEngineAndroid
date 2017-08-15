@@ -153,7 +153,7 @@ class AndroidContainer(
                     title).setView(
                     editText).setPositiveButton("Done") { _, _ ->
                 if (text.text.isNotEmpty()) {
-                    text.text.delete(0, Int.MAX_VALUE)
+                    text.text.clear()
                 }
                 text.text.append(editText.text)
                 text.cursor = text.text.length
