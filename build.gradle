@@ -54,7 +54,6 @@ allprojects {
         maven {
             url "https://dl.bintray.com/kotlin/kotlin-dev"
         }
-        mavenLocal()
         maven {
             url "https://jitpack.io"
         }
