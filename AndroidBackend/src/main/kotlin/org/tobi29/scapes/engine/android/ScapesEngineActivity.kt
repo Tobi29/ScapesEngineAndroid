@@ -20,7 +20,6 @@ import android.app.Activity
 import android.os.Bundle
 import android.os.Handler
 import org.tobi29.scapes.engine.Container
-import org.tobi29.scapes.engine.Game
 import org.tobi29.scapes.engine.ScapesEngine
 import org.tobi29.scapes.engine.gui.GuiAction
 import org.tobi29.scapes.engine.gui.GuiStyle
@@ -38,7 +37,7 @@ abstract class ScapesEngineActivity : Activity(), Crashable {
     private var view: ScapesEngineView? = null
     val handler = Handler()
 
-    abstract fun onCreateEngine(): Triple<(ScapesEngine) -> Game, (ScapesEngine) -> GuiStyle, MutableTagMap>
+    abstract fun onCreateEngine(): Pair<(ScapesEngine) -> GuiStyle, MutableTagMap>
 
     abstract fun onInitEngine(engine: ScapesEngine)
 
@@ -46,7 +45,7 @@ abstract class ScapesEngineActivity : Activity(), Crashable {
         super.onCreate(savedInstanceState)
         val cache = path(cacheDir.toString()).resolve("AndroidTypeface")
         FileCache.check(cache)
-        val (game, defaultGuiStyle, configMap) = onCreateEngine()
+        val (defaultGuiStyle, configMap) = onCreateEngine()
         val backend: (ScapesEngine) -> Container = { engine ->
             AndroidContainer(engine, this, handler, cache, {
                 handler.post {
@@ -54,8 +53,7 @@ abstract class ScapesEngineActivity : Activity(), Crashable {
                 }
             }).also { container = it }
         }
-        val engine = ScapesEngine(game, backend, defaultGuiStyle, taskExecutor,
-                configMap)
+        val engine = ScapesEngine(backend, defaultGuiStyle, taskExecutor, configMap)
         onInitEngine(engine)
         val container = this.container
                 ?: throw IllegalStateException("No container got created")

@@ -23,7 +23,6 @@ import android.os.Binder
 import android.os.Handler
 import android.os.IBinder
 import org.tobi29.scapes.engine.Container
-import org.tobi29.scapes.engine.Game
 import org.tobi29.scapes.engine.ScapesEngine
 import org.tobi29.scapes.engine.gui.GuiAction
 import org.tobi29.scapes.engine.gui.GuiStyle
@@ -56,7 +55,7 @@ abstract class ScapesEngineService : Service(), Crashable {
         container?.engine?.guiStack?.fireAction(GuiAction.BACK)
     }
 
-    abstract fun onCreateEngine(): Triple<(ScapesEngine) -> Game, (ScapesEngine) -> GuiStyle, MutableTagMap>
+    abstract fun onCreateEngine(): Pair<(ScapesEngine) -> GuiStyle, MutableTagMap>
 
     abstract fun onInitEngine(engine: ScapesEngine)
 
@@ -66,7 +65,7 @@ abstract class ScapesEngineService : Service(), Crashable {
         startForeground(1, notification)
         val cache = path(cacheDir.toString()).resolve("AndroidTypeface")
         FileCache.check(cache)
-        val (game, defaultGuiStyle, configMap) = onCreateEngine()
+        val (defaultGuiStyle, configMap) = onCreateEngine()
         val backend: (ScapesEngine) -> Container = { engine ->
             AndroidContainer(engine, this, handler, cache, {
                 done.set(true)
@@ -76,7 +75,7 @@ abstract class ScapesEngineService : Service(), Crashable {
                 }
             }).also { container = it }
         }
-        val engine = ScapesEngine(game, backend, defaultGuiStyle, taskExecutor,
+        val engine = ScapesEngine(backend, defaultGuiStyle, taskExecutor,
                 configMap)
         onInitEngine(engine)
         engine.start()
