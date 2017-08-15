@@ -67,7 +67,7 @@ task wrapper(type: Wrapper) {
 }
 
 ext {
-    scapesEngineVersion = "0.0.2"
+    scapesEngineVersion = "0.0.3"
 
     scapesEngineEngineJVM =
             "com.github.Tobi29.ScapesEngine:EngineJVM:$scapesEngineVersion"
