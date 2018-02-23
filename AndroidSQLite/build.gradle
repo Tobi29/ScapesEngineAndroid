@@ -14,19 +14,15 @@
  * limitations under the License.
  */
 
-apply from: "$rootDir/resources/scapesenginemodulekotlin.gradle"
+apply from: "$rootDir/resources/modulekotlinandroid.gradle"
 
 android {
     defaultConfig {
         minSdkVersion 11
-        targetSdkVersion 26
-        versionCode = 1
-        versionName = version
     }
 }
 
 dependencies {
-    implementation rootProject.ext.scapesEngineSQLFrameworkJVM
-    implementation rootProject.ext.scapesEngineFileSystemsJVM
-    implementation rootProject.ext.scapesEngineUtilsJVM
+    api rootProject.ext.scapesEngineSQLFrameworkJVM
+    api rootProject.ext.scapesEngineFileSystemsJVM
 }

@@ -1,8 +1,8 @@
 package org.tobi29.scapes.engine.android.parcel
 
 import android.os.Bundle
-import org.tobi29.scapes.engine.utils.tag.TagMap
-import org.tobi29.scapes.engine.utils.tag.write
+import org.tobi29.io.tag.TagMap
+import org.tobi29.io.tag.write
 
 /**
  * Convert a [Bundle] into a [TagMap] produced by [toBundle]

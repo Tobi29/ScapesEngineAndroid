@@ -19,13 +19,15 @@ package org.tobi29.scapes.engine.android.sqlite
 import android.content.ContentValues
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
-import org.tobi29.scapes.engine.sql.*
-import java.util.*
+import org.tobi29.io.use
+import org.tobi29.sql.*
 
 class AndroidSQLite(private val connection: SQLiteDatabase) : SQLDatabase {
-    override fun createTable(name: String,
-                             primaryKey: Array<out String>,
-                             columns: Array<out SQLColumn>) {
+    override fun createTable(
+        name: String,
+        primaryKey: Array<out String>,
+        columns: Array<out SQLColumn>
+    ) {
         val sql = StringBuilder(512)
         sql.append("CREATE TABLE IF NOT EXISTS ").append(name).append(" (")
         var first = true
@@ -77,9 +79,11 @@ class AndroidSQLite(private val connection: SQLiteDatabase) : SQLDatabase {
         statement.execute()
     }
 
-    override fun compileQuery(table: String,
-                              columns: Array<out String>,
-                              matches: Array<out SQLMatch>): SQLQuery {
+    override fun compileQuery(
+        table: String,
+        columns: Array<out String>,
+        matches: Array<out SQLMatch>
+    ): SQLQuery {
         val where = StringBuilder(columns.size shl 5)
         sqlWhere(matches, where)
         val compiledWhere = where.toString()
@@ -88,13 +92,16 @@ class AndroidSQLite(private val connection: SQLiteDatabase) : SQLDatabase {
             for ((i, value) in values.withIndex()) {
                 if (value is ByteArray) {
                     throw IllegalArgumentException(
-                            "Byte array value not supported")
+                        "Byte array value not supported"
+                    )
                 }
                 argsWhere[i] = value.toString()
             }
             val result = ArrayList<Array<Any?>>()
-            connection.query(table, columns, compiledWhere, argsWhere, null,
-                    null, null).use { cursor ->
+            connection.query(
+                table, columns, compiledWhere, argsWhere, null,
+                null, null
+            ).use { cursor ->
                 while (cursor.moveToNext()) {
                     result.add(resolveResult(cursor))
                 }
@@ -103,28 +110,35 @@ class AndroidSQLite(private val connection: SQLiteDatabase) : SQLDatabase {
         }
     }
 
-    override fun compileInsert(table: String,
-                               columns: Array<out String>): SQLInsert {
+    override fun compileInsert(
+        table: String,
+        columns: Array<out String>
+    ): SQLInsert {
         val columnsSafe = columns.clone()
         return { values ->
             for (row in values) {
                 if (row.size != columnsSafe.size) {
                     throw IllegalArgumentException(
-                            "Amount of updated values (${row.size}) does not match amount of columns (${columnsSafe.size})")
+                        "Amount of updated values (${row.size}) does not match amount of columns (${columnsSafe.size})"
+                    )
                 }
                 val content = ContentValues()
                 for (i in columnsSafe.indices) {
                     resolveObject(row[i], columnsSafe[i], content)
                 }
-                connection.insertWithOnConflict(table, null, content,
-                        SQLiteDatabase.CONFLICT_IGNORE)
+                connection.insertWithOnConflict(
+                    table, null, content,
+                    SQLiteDatabase.CONFLICT_IGNORE
+                )
             }
         }
     }
 
-    override fun compileUpdate(table: String,
-                               matches: Array<out SQLMatch>,
-                               columns: Array<out String>): SQLUpdate {
+    override fun compileUpdate(
+        table: String,
+        matches: Array<out SQLMatch>,
+        columns: Array<out String>
+    ): SQLUpdate {
         val columnsSafe = columns.clone()
         val where = StringBuilder(64)
         sqlWhere(matches, where)
@@ -132,13 +146,15 @@ class AndroidSQLite(private val connection: SQLiteDatabase) : SQLDatabase {
         return { values, updates ->
             if (updates.size != columnsSafe.size) {
                 throw IllegalArgumentException(
-                        "Amount of updated values (${updates.size}) does not match amount of columns (${columnsSafe.size})")
+                    "Amount of updated values (${updates.size}) does not match amount of columns (${columnsSafe.size})"
+                )
             }
             val argsWhere = arrayOfNulls<String>(matches.size)
             for ((i, match) in values.withIndex()) {
                 if (match is ByteArray) {
                     throw IllegalArgumentException(
-                            "Byte array value not supported")
+                        "Byte array value not supported"
+                    )
                 }
                 argsWhere[i] = match.toString()
             }
@@ -150,14 +166,17 @@ class AndroidSQLite(private val connection: SQLiteDatabase) : SQLDatabase {
         }
     }
 
-    override fun compileReplace(table: String,
-                                columns: Array<out String>): SQLReplace {
+    override fun compileReplace(
+        table: String,
+        columns: Array<out String>
+    ): SQLReplace {
         val columnsSize = columns.size
         return { values ->
             for (row in values) {
                 if (row.size != columnsSize) {
                     throw IllegalArgumentException(
-                            "Amount of updated values (${row.size}) does not match amount of columns ($columnsSize)")
+                        "Amount of updated values (${row.size}) does not match amount of columns ($columnsSize)"
+                    )
                 }
                 val content = ContentValues()
                 for (i in columns.indices) {
@@ -168,8 +187,10 @@ class AndroidSQLite(private val connection: SQLiteDatabase) : SQLDatabase {
         }
     }
 
-    override fun compileDelete(table: String,
-                               matches: Array<out SQLMatch>): SQLDelete {
+    override fun compileDelete(
+        table: String,
+        matches: Array<out SQLMatch>
+    ): SQLDelete {
         val where = StringBuilder(64)
         sqlWhere(matches, where)
         val compiledWhere = where.toString()
@@ -178,7 +199,8 @@ class AndroidSQLite(private val connection: SQLiteDatabase) : SQLDatabase {
             for ((i, match) in values.withIndex()) {
                 if (match is ByteArray) {
                     throw IllegalArgumentException(
-                            "Byte array value not supported")
+                        "Byte array value not supported"
+                    )
                 }
                 argsWhere[i] = match.toString()
             }
@@ -190,34 +212,28 @@ class AndroidSQLite(private val connection: SQLiteDatabase) : SQLDatabase {
         connection.close()
     }
 
-    private fun resolveObject(value: Any?,
-                              column: String,
-                              content: ContentValues) {
-        if (value is Byte) {
-            content.put(column, value as Byte?)
-        } else if (value is Short) {
-            content.put(column, value as Short?)
-        } else if (value is Int) {
-            content.put(column, value as Int?)
-        } else if (value is Long) {
-            content.put(column, value as Long?)
-        } else if (value is Float) {
-            content.put(column, value as Float?)
-        } else if (value is Double) {
-            content.put(column, value as Double?)
-        } else if (value is ByteArray) {
-            content.put(column, value as ByteArray?)
-        } else if (value is String) {
-            content.put(column, value as String?)
-        } else if (value == null) {
-            content.putNull(column)
+    private fun resolveObject(
+        value: Any?,
+        column: String,
+        content: ContentValues
+    ) {
+        when (value) {
+            is Byte -> content.put(column, value)
+            is Short -> content.put(column, value)
+            is Int -> content.put(column, value)
+            is Long -> content.put(column, value)
+            is Float -> content.put(column, value)
+            is Double -> content.put(column, value)
+            is ByteArray -> content.put(column, value)
+            is String -> content.put(column, value)
+            null -> content.putNull(column)
         }
     }
 
     private fun resolveResult(cursor: Cursor): Array<Any?> {
         val columns = cursor.columnCount
         val row = arrayOfNulls<Any>(columns)
-        for (i in 0..columns - 1) {
+        for (i in 0 until columns) {
             when (cursor.getType(i)) {
                 Cursor.FIELD_TYPE_NULL -> row[i] = null
                 Cursor.FIELD_TYPE_INTEGER -> row[i] = cursor.getLong(i)

@@ -14,39 +14,48 @@
  * limitations under the License.
  */
 
-package org.tobi29.scapes.engine.android.opengles
+package org.tobi29.scapes.engine.backends.opengles
 
-import org.tobi29.scapes.engine.ScapesEngine
 import org.tobi29.scapes.engine.graphics.GL
+import org.tobi29.scapes.engine.graphics.GraphicsObjectSupplier
 import org.tobi29.scapes.engine.graphics.Model
 import org.tobi29.scapes.engine.graphics.Shader
 
-internal abstract class VAO(protected val engine: ScapesEngine) : Model {
+internal abstract class VAO(protected val glh: GLESHandle) : Model {
+    override val gos: GraphicsObjectSupplier get() = glh
     protected var used: Long = 0
     override var isStored = false
-    protected var markAsDisposed = false
+    protected var markDisposed = false
     override var weak = false
     protected var detach: (() -> Unit)? = null
 
     override fun markAsDisposed() {
-        markAsDisposed = true
+        markDisposed = true
     }
 
-    abstract override fun render(gl: GL,
-                                 shader: Shader): Boolean
+    abstract override fun render(
+        gl: GL,
+        shader: Shader
+    ): Boolean
 
-    abstract override fun render(gl: GL,
-                                 shader: Shader,
-                                 length: Int): Boolean
+    abstract override fun render(
+        gl: GL,
+        shader: Shader,
+        length: Int
+    ): Boolean
 
-    abstract override fun renderInstanced(gl: GL,
-                                          shader: Shader,
-                                          count: Int): Boolean
+    abstract override fun renderInstanced(
+        gl: GL,
+        shader: Shader,
+        count: Int
+    ): Boolean
 
-    abstract override fun renderInstanced(gl: GL,
-                                          shader: Shader,
-                                          length: Int,
-                                          count: Int): Boolean
+    abstract override fun renderInstanced(
+        gl: GL,
+        shader: Shader,
+        length: Int,
+        count: Int
+    ): Boolean
 
     override fun ensureStored(gl: GL): Boolean {
         if (!isStored) {
@@ -65,30 +74,39 @@ internal abstract class VAO(protected val engine: ScapesEngine) : Model {
     }
 
     override fun isUsed(time: Long) =
-            time - used < 1000000000L && !markAsDisposed
+        time - used < 1000000000L && !markDisposed
 
     protected abstract fun store(gl: GL): Boolean
 
-    protected fun shader(gl: GL,
-                         shader: Shader) {
+    protected fun shader(
+        gl: GL,
+        shader: Shader
+    ) {
         gl.check()
+        if (shader !is ShaderGL) throw IllegalArgumentException("Shader from different implementation")
         val matrix = gl.matrixStack.current()
         shader.activate(gl)
         shader.updateUniforms(gl)
         var uniformLocation = shader.uniformLocation(0)
-        if (uniformLocation != -1) {
-            glUniformMatrix4fv(uniformLocation, false,
-                    matrix.modelView().values())
+        if (uniformLocation != GLUniform_EMPTY) {
+            glh.glUniformMatrix4fv(
+                uniformLocation, false,
+                matrix.modelView().values
+            )
         }
         uniformLocation = shader.uniformLocation(1)
-        if (uniformLocation != -1) {
-            glUniformMatrix4fv(uniformLocation, false,
-                    matrix.modelViewProjection().values())
+        if (uniformLocation != GLUniform_EMPTY) {
+            glh.glUniformMatrix4fv(
+                uniformLocation, false,
+                matrix.modelViewProjection().values
+            )
         }
         uniformLocation = shader.uniformLocation(2)
-        if (uniformLocation != -1) {
-            glUniformMatrix3fv(uniformLocation, false,
-                    matrix.normal().values())
+        if (uniformLocation != GLUniform_EMPTY) {
+            glh.glUniformMatrix3fv(
+                uniformLocation, false,
+                matrix.normal().values
+            )
         }
     }
 }

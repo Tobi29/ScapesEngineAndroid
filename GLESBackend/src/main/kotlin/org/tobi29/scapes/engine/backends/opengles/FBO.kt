@@ -14,59 +14,64 @@
  * limitations under the License.
  */
 
-package org.tobi29.scapes.engine.android.opengles
+package org.tobi29.scapes.engine.backends.opengles
 
-import org.tobi29.scapes.engine.ScapesEngine
 import org.tobi29.scapes.engine.graphics.*
-import org.tobi29.scapes.engine.utils.assert
-import org.tobi29.scapes.engine.utils.math.max
-import org.tobi29.scapes.engine.utils.readOnly
+import org.tobi29.stdex.assert
+import org.tobi29.stdex.readOnly
 
-internal class FBO(engine: ScapesEngine,
-                   private val currentFBO: CurrentFBO,
-                   width: Int,
-                   height: Int,
-                   colorAttachments: Int,
-                   depth: Boolean,
-                   hdr: Boolean,
-                   alpha: Boolean,
-                   minFilter: TextureFilter,
-                   magFilter: TextureFilter) : Framebuffer {
+internal class FBO(
+    private val glh: GLESHandle,
+    private val currentFBO: CurrentFBO,
+    width: Int,
+    height: Int,
+    colorAttachments: Int,
+    depth: Boolean,
+    hdr: Boolean,
+    alpha: Boolean,
+    minFilter: TextureFilter,
+    magFilter: TextureFilter
+) : Framebuffer {
+    override val gos: GraphicsObjectSupplier get() = glh
     override val texturesColor: List<TextureFBOColor>
     override val textureDepth: TextureFBODepth?
-    private var detach: Function0<Unit>? = null
-    private var framebufferID = 0
+    private var detach: (() -> Unit)? = null
+    private var framebufferID = GLFBO_EMPTY
     private var width = 0
     private var currentWidth = 0
     private var height = 0
     private var currentHeight = 0
-    private var lastFBO = 0
-    private var used: Long = 0
+    private var used = 0L
     override var isStored = false
     private var markAsDisposed = false
 
     init {
-        this.width = max(width, 1)
-        this.height = max(height, 1)
-        texturesColor = (0..colorAttachments - 1).map {
-            TextureFBOColor(engine, width, height, minFilter, magFilter,
-                    TextureWrap.CLAMP, TextureWrap.CLAMP, alpha, hdr)
+        this.width = width.coerceAtLeast(1)
+        this.height = height.coerceAtLeast(1)
+        texturesColor = (0 until colorAttachments).map {
+            TextureFBOColor(
+                glh, width, height, minFilter, magFilter,
+                TextureWrap.CLAMP, TextureWrap.CLAMP, alpha, hdr
+            )
         }.readOnly()
-        if (depth) {
-            textureDepth = TextureFBODepth(engine, width, height, minFilter,
-                    magFilter, TextureWrap.CLAMP, TextureWrap.CLAMP)
+        textureDepth = if (depth) {
+            TextureFBODepth(
+                glh, width, height, minFilter,
+                magFilter, TextureWrap.CLAMP, TextureWrap.CLAMP
+            )
         } else {
-            textureDepth = null
+            null
         }
     }
 
     override fun deactivate(gl: GL) {
-        glBindFramebuffer(GL_FRAMEBUFFER, lastFBO)
-        currentFBO.current = lastFBO
-        lastFBO = 0
+        gl.check()
+        assert { isStored }
+        unbind(gl)
     }
 
     override fun activate(gl: GL) {
+        gl.check()
         ensureStored(gl)
         bind(gl)
     }
@@ -79,8 +84,10 @@ internal class FBO(engine: ScapesEngine,
         return currentHeight
     }
 
-    override fun setSize(width: Int,
-                         height: Int) {
+    override fun setSize(
+        width: Int,
+        height: Int
+    ) {
         this.width = width
         this.height = height
     }
@@ -113,7 +120,7 @@ internal class FBO(engine: ScapesEngine,
     }
 
     override fun isUsed(time: Long) =
-            time - used < 1000000000L && !markAsDisposed
+        time - used < 1000000000L && !markAsDisposed
 
     override fun dispose(gl: GL?) {
         if (!isStored) {
@@ -121,13 +128,12 @@ internal class FBO(engine: ScapesEngine,
         }
         if (gl != null) {
             gl.check()
-            glDeleteFramebuffers(framebufferID)
+            glh.glDeleteFramebuffers(framebufferID)
         }
         isStored = false
         detach?.invoke()
         detach = null
-        framebufferID = 0
-        lastFBO = 0
+        framebufferID = GLFBO_EMPTY
         markAsDisposed = false
         for (textureColor in texturesColor) {
             textureColor.dispose(gl)
@@ -139,29 +145,33 @@ internal class FBO(engine: ScapesEngine,
         assert { !isStored }
         isStored = true
         gl.check()
-        framebufferID = glGenFramebuffers()
+        framebufferID = glh.glGenFramebuffers()
         bind(gl)
         textureDepth?.attach(gl)
         for (i in texturesColor.indices) {
             texturesColor[i].attach(gl, i)
         }
-        GLUtils.drawbuffers(texturesColor.size)
-        val status = GLUtils.status()
+        glh.drawbuffers(texturesColor.size)
+        val status = glh.status()
         if (status !== FramebufferStatus.COMPLETE) {
             // TODO: Add error handling
             println(status)
         }
-        glClearColor(0.0f, 0.0f, 0.0f, 0.0f)
-        glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
-        deactivate(gl)
+        glh.glClearColor(0.0f, 0.0f, 0.0f, 0.0f)
+        glh.glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
+        unbind(gl)
         detach = gl.fboTracker.attach(this)
     }
 
     private fun bind(gl: GL) {
-        assert { isStored }
         gl.check()
-        lastFBO = currentFBO.current
-        currentFBO.current = framebufferID
-        glBindFramebuffer(GL_FRAMEBUFFER, framebufferID)
+        currentFBO.push(framebufferID)
+        glh.glBindFramebuffer(GL_FRAMEBUFFER, framebufferID)
+    }
+
+    private fun unbind(gl: GL) {
+        gl.check()
+        val previous = currentFBO.pop(framebufferID)
+        glh.glBindFramebuffer(GL_FRAMEBUFFER, previous)
     }
 }

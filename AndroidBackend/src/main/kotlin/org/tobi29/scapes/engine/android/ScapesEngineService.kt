@@ -16,43 +16,46 @@
 
 package org.tobi29.scapes.engine.android
 
+import android.annotation.TargetApi
 import android.app.Notification
 import android.app.Service
 import android.content.Intent
 import android.os.Binder
+import android.os.Build
 import android.os.Handler
 import android.os.IBinder
-import org.tobi29.scapes.engine.Container
+import kotlinx.coroutines.experimental.runBlocking
+import org.tobi29.coroutines.defaultBackgroundExecutor
+import org.tobi29.io.filesystem.FileCache
+import org.tobi29.io.filesystem.path
+import org.tobi29.io.tag.MutableTagMap
+import org.tobi29.logging.KLogging
 import org.tobi29.scapes.engine.ScapesEngine
 import org.tobi29.scapes.engine.gui.GuiAction
 import org.tobi29.scapes.engine.gui.GuiStyle
-import org.tobi29.scapes.engine.utils.Crashable
-import org.tobi29.scapes.engine.utils.io.filesystem.FileCache
-import org.tobi29.scapes.engine.utils.io.filesystem.path
-import org.tobi29.scapes.engine.utils.logging.KLogging
-import org.tobi29.scapes.engine.utils.tag.MutableTagMap
-import org.tobi29.scapes.engine.utils.task.TaskExecutor
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.system.exitProcess
 
-abstract class ScapesEngineService : Service(), Crashable {
-    var container: AndroidContainer? = null
+abstract class ScapesEngineService : Service() {
+    var container: Pair<AndroidContainer, ScapesEngine>? = null
         private set
-    private val taskExecutor = TaskExecutor(this, "Service")
     private val done = AtomicBoolean()
     val handler = Handler()
     var activity: ScapesEngineServiceActivity? = null
+    protected open val serviceNotificationChannel: String
+        @TargetApi(26)
+        get() = notificationChannelService
 
     fun activity(activity: ScapesEngineServiceActivity) {
         if (this.activity != null) {
             throw IllegalStateException(
-                    "Trying to attach activity to already used service")
+                "Trying to attach activity to already used service"
+            )
         }
         this.activity = activity
     }
 
     fun onBackPressed() {
-        container?.engine?.guiStack?.fireAction(GuiAction.BACK)
+        container?.second?.guiStack?.fireAction(GuiAction.BACK)
     }
 
     abstract fun onCreateEngine(): Pair<(ScapesEngine) -> GuiStyle, MutableTagMap>
@@ -61,22 +64,30 @@ abstract class ScapesEngineService : Service(), Crashable {
 
     override fun onCreate() {
         super.onCreate()
-        val notification = Notification.Builder(this).build()
+        val notification =
+            if (Build.VERSION.SDK_INT >= 26) {
+                Notification.Builder(this, serviceNotificationChannel)
+            } else {
+                @Suppress("DEPRECATION")
+                Notification.Builder(this)
+            }.build()
         startForeground(1, notification)
         val cache = path(cacheDir.toString()).resolve("AndroidTypeface")
         FileCache.check(cache)
         val (defaultGuiStyle, configMap) = onCreateEngine()
-        val backend: (ScapesEngine) -> Container = { engine ->
-            AndroidContainer(engine, this, handler, cache, {
+        val container = AndroidContainer(ScapesEngineAndroid(this, cache), this,
+            handler, {
                 done.set(true)
                 handler.post {
                     activity?.finishAndRemoveTask()
                     stopSelf()
                 }
-            }).also { container = it }
-        }
-        val engine = ScapesEngine(backend, defaultGuiStyle, taskExecutor,
-                configMap)
+            })
+        val engine = ScapesEngine(
+            container, defaultGuiStyle,
+            defaultBackgroundExecutor, configMap
+        )
+        this.container = container to engine
         onInitEngine(engine)
         engine.start()
     }
@@ -84,11 +95,14 @@ abstract class ScapesEngineService : Service(), Crashable {
     override fun onDestroy() {
         super.onDestroy()
         done.set(true)
-        activity?.finishAndRemoveTask()
-        container?.engine?.dispose()
-        taskExecutor.shutdown()
-        activity = null
-        container = null
+        activity?.let {
+            it.finishAndRemoveTask()
+            activity = null
+        }
+        container?.let { (_, engine) ->
+            runBlocking { engine.dispose() }
+            container = null
+        }
         logger.info { "Service destroyed" }
     }
 
@@ -104,15 +118,6 @@ abstract class ScapesEngineService : Service(), Crashable {
     override fun onTaskRemoved(rootIntent: Intent) {
         super.onTaskRemoved(rootIntent)
         stopSelf()
-    }
-
-    override fun crash(e: Throwable): Nothing {
-        try {
-            logger.error { "Engine crashed: $e" }
-            e.printStackTrace()
-        } finally {
-            exitProcess(1)
-        }
     }
 
     inner class ScapesBinder : Binder() {

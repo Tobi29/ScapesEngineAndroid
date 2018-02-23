@@ -23,7 +23,8 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Bundle
 import android.os.IBinder
-import org.tobi29.scapes.engine.utils.logging.KLogging
+import org.tobi29.logging.KLogging
+import org.tobi29.scapes.engine.ScapesEngine
 
 abstract class ScapesEngineServiceActivity : Activity() {
     private var serviceIntent: Intent? = null
@@ -59,9 +60,12 @@ abstract class ScapesEngineServiceActivity : Activity() {
         serviceIntent = null
     }
 
-    private fun initView(container: AndroidContainer): ScapesEngineView {
+    private fun initView(
+        container: AndroidContainer,
+        engine: ScapesEngine
+    ): ScapesEngineView {
         disposeView()
-        return ScapesEngineView(this@ScapesEngineServiceActivity).also {
+        return ScapesEngineView(this@ScapesEngineServiceActivity, engine).also {
             container.attachView(it)
             setContentView(it)
             view = it
@@ -70,7 +74,9 @@ abstract class ScapesEngineServiceActivity : Activity() {
 
     private fun disposeView() {
         view?.let {
-            connection.engine?.container?.detachView(it)
+            connection.engine?.container?.let { (container, _) ->
+                container.detachView(it)
+            }
             it.dispose()
             view = null
         }
@@ -79,15 +85,17 @@ abstract class ScapesEngineServiceActivity : Activity() {
     private inner class ScapesEngineConnection : ServiceConnection {
         internal var engine: ScapesEngineService? = null
 
-        override fun onServiceConnected(name: ComponentName,
-                                        service: IBinder) {
+        override fun onServiceConnected(
+            name: ComponentName,
+            service: IBinder
+        ) {
             disposeView()
             val engine = (service as ScapesEngineService.ScapesBinder).service
             val container = engine?.container
             if (container == null) {
                 finishAndRemoveTask()
             } else {
-                initView(container)
+                initView(container.first, container.second)
                 engine.activity(this@ScapesEngineServiceActivity)
                 this.engine = engine
             }

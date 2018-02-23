@@ -21,9 +21,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Typeface
 import org.tobi29.scapes.engine.gui.GlyphRenderer
-import org.tobi29.scapes.engine.utils.io.ByteBufferProvider
-import org.tobi29.scapes.engine.utils.math.round
-import java.nio.ByteBuffer
+import kotlin.math.roundToInt
 
 class AndroidGlyphRenderer(private val typeface: Typeface,
                            size: Int) : GlyphRenderer {
@@ -57,8 +55,8 @@ class AndroidGlyphRenderer(private val typeface: Typeface,
         tileSize = 1.0 / tiles
         glyphSize = size shl 1
         imageSize = glyphSize shl tileBits
-        renderX = round(size * 0.5)
-        renderY = round(size * 1.4)
+        renderX = (size * 0.5).roundToInt()
+        renderY = (size * 1.4).roundToInt()
     }
 
     override fun pageInfo(id: Int): GlyphRenderer.GlyphPage {
@@ -72,13 +70,12 @@ class AndroidGlyphRenderer(private val typeface: Typeface,
             val c = (i + offset).toChar()
             val str = String(charArrayOf(c))
             paint.getTextWidths(str, singleWidth)
-            width[i] = round(singleWidth[0])
+            width[i] = (singleWidth[0]).roundToInt()
         }
         return GlyphRenderer.GlyphPage(width, imageSize, tiles, tileSize)
     }
 
-    override fun page(id: Int,
-                      bufferProvider: ByteBufferProvider): ByteBuffer {
+    override suspend fun page(id: Int): ByteArray {
         val bitmap = Bitmap.createBitmap(imageSize, imageSize,
                 Bitmap.Config.ARGB_8888)
         bitmap.density = 96
@@ -99,17 +96,17 @@ class AndroidGlyphRenderer(private val typeface: Typeface,
                 i++
             }
         }
-        val buffer = bufferProvider.allocate(imageSize * imageSize shl 2)
         val pixels = IntArray(imageSize * imageSize)
         bitmap.getPixels(pixels, 0, imageSize, 0, 0, imageSize, imageSize)
+        val buffer = ByteArray(imageSize * imageSize * 4)
         i = 0
+        var j = 0
         for (y in 0..imageSize - 1) {
             for (x in 0..imageSize - 1) {
-                buffer.put(WHITE)
-                buffer.put((pixels[i++] ushr 24).toByte())
+                repeat(3) { buffer[j++] = 0xFF.toByte() }
+                buffer[j++] = (pixels[i++] ushr 24).toByte()
             }
         }
-        buffer.rewind()
         return buffer
     }
 
@@ -119,10 +116,5 @@ class AndroidGlyphRenderer(private val typeface: Typeface,
 
     override fun pageCode(character: Char): Int {
         return character.toInt() and pageTileMask
-    }
-
-    companion object {
-        private val WHITE = byteArrayOf(0xFF.toByte(), 0xFF.toByte(),
-                0xFF.toByte())
     }
 }

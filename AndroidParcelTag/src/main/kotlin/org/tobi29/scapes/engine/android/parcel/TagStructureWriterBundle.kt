@@ -17,27 +17,23 @@
 package org.tobi29.scapes.engine.android.parcel
 
 import android.os.Bundle
-import org.tobi29.scapes.engine.utils.tag.*
-import java.io.IOException
-import java.util.*
-import kotlin.collections.ArrayList
+import org.tobi29.io.IOException
+import org.tobi29.io.tag.*
+import org.tobi29.stdex.ArrayDeque
 
 class TagStructureWriterBundle(rootBundle: Bundle) : TagStructureWriter {
     private val stack = ArrayDeque<Pair<String?, Any>>()
     private var bundle: Any = rootBundle
 
-    private fun bundle() = bundle as? Bundle ?: throw IllegalStateException(
-            "Key operation when list")
+    private fun bundle() = bundle as? Bundle
+            ?: throw IllegalStateException("Key operation when list")
 
-    @Suppress("UNCHECKED_CAST")
-    private fun list() = bundle as? BundleList ?: throw IllegalStateException(
-            "Non-key operation when not list")
+    private fun list() = bundle as? BundleList
+            ?: throw IllegalStateException("Non-key operation when not list")
 
-    override fun begin(root: TagMap) {
-    }
+    override fun begin(root: TagMap) {}
 
-    override fun end() {
-    }
+    override fun end() {}
 
     override fun beginStructure(key: String) {
         val bundle = bundle()
@@ -134,11 +130,13 @@ class TagStructureWriterBundle(rootBundle: Bundle) : TagStructureWriter {
         })
     }
 
-    override fun writePrimitiveTag(key: String,
-                                   tag: TagPrimitive) {
+    override fun writePrimitiveTag(
+        key: String,
+        tag: TagPrimitive
+    ) {
         val bundle = bundle()
         when (tag) {
-            is TagUnit -> bundle.putBundle(key, Bundle().apply {
+            TagUnit -> bundle.putBundle(key, Bundle().apply {
                 putString("Type", "Unit")
             })
             is TagBoolean -> bundle.putBoolean(key, tag.value)
@@ -159,7 +157,7 @@ class TagStructureWriterBundle(rootBundle: Bundle) : TagStructureWriter {
     override fun writePrimitiveTag(tag: TagPrimitive) {
         val list = list()
         when (tag) {
-            is TagUnit -> list.addBundle(Bundle().apply {
+            TagUnit -> list.addBundle(Bundle().apply {
                 putString("Type", "Unit")
             })
             is TagBoolean -> list.addBoolean(tag.value)

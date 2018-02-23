@@ -14,30 +14,26 @@
  * limitations under the License.
  */
 
-package org.tobi29.scapes.engine.android.opengles
+package org.tobi29.scapes.engine.backends.opengles
 
-import org.tobi29.scapes.engine.ScapesEngine
 import org.tobi29.scapes.engine.graphics.GL
 import org.tobi29.scapes.engine.graphics.TextureFilter
 import org.tobi29.scapes.engine.graphics.TextureWrap
-import org.tobi29.scapes.engine.utils.assert
-import org.tobi29.scapes.engine.utils.io.ByteBuffer
+import org.tobi29.stdex.assert
 
-internal abstract class TextureFBO(engine: ScapesEngine,
-                                   width: Int,
-                                   height: Int,
-                                   buffer: ByteBuffer?,
-                                   mipmaps: Int,
-                                   minFilter: TextureFilter,
-                                   magFilter: TextureFilter,
-                                   wrapS: TextureWrap,
-                                   wrapT: TextureWrap) : TextureGL(
-        engine, width, height, buffer, mipmaps, minFilter, magFilter, wrapS,
-        wrapT) {
-
-    fun resize(width: Int,
-               height: Int,
-               gl: GL) {
+internal abstract class TextureFBO(
+    glh: GLESHandle,
+    width: Int,
+    height: Int,
+    mipmaps: Int,
+    minFilter: TextureFilter,
+    magFilter: TextureFilter,
+    wrapS: TextureWrap,
+    wrapT: TextureWrap
+) : TextureGL(
+    glh, width, height, null, mipmaps, minFilter, magFilter, wrapS, wrapT
+) {
+    fun resize(width: Int, height: Int, gl: GL) {
         setBuffer(null, width, height)
         texture(gl)
     }
@@ -47,23 +43,26 @@ internal abstract class TextureFBO(engine: ScapesEngine,
             return
         }
         gl.check()
-        glBindTexture(GL_TEXTURE_2D, textureID)
+        glh.glBindTexture(GL_TEXTURE_2D, textureID)
         setFilter()
     }
 
     override fun markDisposed() {
         throw UnsupportedOperationException(
-                "FBO texture should not be disposed")
+            "FBO texture should not be disposed"
+        )
     }
 
     override fun ensureStored(gl: GL): Boolean {
         throw UnsupportedOperationException(
-                "FBO texture can only be managed by framebuffer")
+            "FBO texture can only be managed by framebuffer"
+        )
     }
 
     override fun ensureDisposed(gl: GL) {
         throw UnsupportedOperationException(
-                "FBO texture can only be managed by framebuffer")
+            "FBO texture can only be managed by framebuffer"
+        )
     }
 
     override fun isUsed(time: Long) = isStored
@@ -72,7 +71,7 @@ internal abstract class TextureFBO(engine: ScapesEngine,
         assert { !isStored }
         isStored = true
         gl.check()
-        textureID = glGenTextures()
+        textureID = glh.glGenTextures()
         texture(gl)
         dirtyFilter.set(true)
     }

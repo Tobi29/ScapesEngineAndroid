@@ -16,7 +16,7 @@
 
 package org.tobi29.scapes.engine.android.profiler
 
-import org.tobi29.scapes.engine.utils.profiler.spi.ProfilerDispatcherProvider
+import org.tobi29.profiler.spi.ProfilerDispatcherProvider
 
 class SysTraceProfilerDispatcherProvider : ProfilerDispatcherProvider {
     override fun dispatcher() = if (android.os.Build.VERSION.SDK_INT >= 18) {

@@ -14,18 +14,22 @@
  * limitations under the License.
  */
 
-package org.tobi29.scapes.engine.android.opengles
+package org.tobi29.scapes.engine.backends.opengles
 
+import org.tobi29.io.ByteViewRO
 import org.tobi29.scapes.engine.graphics.GL
 import org.tobi29.scapes.engine.graphics.RenderType
 import org.tobi29.scapes.engine.graphics.Shader
-import org.tobi29.scapes.engine.utils.assert
+import org.tobi29.stdex.assert
 
-internal class VAOFast(private val vbo: VBO,
-                       private val length: Int,
-                       private val renderType: RenderType) : VAO(
-        vbo.engine) {
-    private var arrayID = 0
+internal class VAOFast(
+    private val vbo: VBO,
+    private var length: Int,
+    private val renderType: RenderType
+) : VAO(
+    vbo.glh
+) {
+    private var arrayID = GLVAO_EMPTY
 
     init {
         if (renderType == RenderType.TRIANGLES && length % 3 != 0) {
@@ -35,41 +39,49 @@ internal class VAOFast(private val vbo: VBO,
         }
     }
 
-    override fun render(gl: GL,
-                        shader: Shader): Boolean {
+    override fun render(
+        gl: GL,
+        shader: Shader
+    ): Boolean {
         return render(gl, shader, length)
     }
 
-    override fun render(gl: GL,
-                        shader: Shader,
-                        length: Int): Boolean {
+    override fun render(
+        gl: GL,
+        shader: Shader,
+        length: Int
+    ): Boolean {
         if (!ensureStored(gl)) {
             return false
         }
         gl.check()
         shader(gl, shader)
-        glBindVertexArray(arrayID)
-        glDrawArrays(GLUtils.renderType(renderType), 0, length)
+        glh.glBindVertexArray(arrayID)
+        glh.glDrawArrays(glh.renderType(renderType), 0, length)
         return true
     }
 
-    override fun renderInstanced(gl: GL,
-                                 shader: Shader,
-                                 count: Int): Boolean {
+    override fun renderInstanced(
+        gl: GL,
+        shader: Shader,
+        count: Int
+    ): Boolean {
         return renderInstanced(gl, shader, length, count)
     }
 
-    override fun renderInstanced(gl: GL,
-                                 shader: Shader,
-                                 length: Int,
-                                 count: Int): Boolean {
+    override fun renderInstanced(
+        gl: GL,
+        shader: Shader,
+        length: Int,
+        count: Int
+    ): Boolean {
         if (!ensureStored(gl)) {
             return false
         }
         gl.check()
         shader(gl, shader)
-        glBindVertexArray(arrayID)
-        glDrawArraysInstanced(GLUtils.renderType(renderType), 0, length, count)
+        glh.glBindVertexArray(arrayID)
+        glh.glDrawArraysInstanced(glh.renderType(renderType), 0, length, count)
         return true
     }
 
@@ -80,8 +92,8 @@ internal class VAOFast(private val vbo: VBO,
         }
         isStored = true
         gl.check()
-        arrayID = glGenVertexArrays()
-        glBindVertexArray(arrayID)
+        arrayID = glh.glGenVertexArrays()
+        glh.glBindVertexArray(arrayID)
         vbo.store(gl, weak)
         detach = gl.vaoTracker.attach(this)
         return true
@@ -94,12 +106,22 @@ internal class VAOFast(private val vbo: VBO,
         if (gl != null) {
             gl.check()
             vbo.dispose(gl)
-            glDeleteVertexArrays(arrayID)
+            glh.glDeleteVertexArrays(arrayID)
         }
         isStored = false
         detach?.invoke()
         detach = null
-        markAsDisposed = false
+        markDisposed = false
         vbo.reset()
     }
+
+    override fun buffer(
+        gl: GL,
+        buffer: ByteViewRO
+    ) {
+        vbo.replaceBuffer(gl, buffer)
+        length = buffer.size / stride
+    }
+
+    override val stride get() = vbo.stride()
 }

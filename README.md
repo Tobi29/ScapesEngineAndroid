@@ -33,14 +33,13 @@ are either handled correctly or no special attention is required to begin with.
   * ~~Engine runs~~
   * ~~Fonts~~
   * ~~Scapes works more or less fully~~ (It tests most of the engine)
-  * ~~Dialogs~~ (Save dialog not implemented yet)
   * ~~Performance profiling integrations~~ (Systrace and CPU sampler do the job)
   * ~~Keyboard and mouse support~~ (Mouse capture will probably only be
     available with Android O once implemented)
   * ~~Gamepad support~~
   * Use platforms APIs for Audio and Image decoding
   * Power management (The engine currently only knows one mode: drain battery)
-  * Allow easy embedding without full engine running
+  * Allow easy embedding without full engine running (Aka making engine lighter)
   * ChromeOS support (No idea if it might already run)
   * VR Support, Google says VR is ze future!
 

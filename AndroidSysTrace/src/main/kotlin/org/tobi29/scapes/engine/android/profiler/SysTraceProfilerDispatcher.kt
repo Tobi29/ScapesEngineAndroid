@@ -17,7 +17,7 @@
 package org.tobi29.scapes.engine.android.profiler
 
 import android.os.Trace
-import org.tobi29.scapes.engine.utils.profiler.ProfilerDispatcher
+import org.tobi29.profiler.ProfilerDispatcher
 
 object SysTraceProfilerDispatcher : ProfilerDispatcher {
     override fun enterNode(name: String) {

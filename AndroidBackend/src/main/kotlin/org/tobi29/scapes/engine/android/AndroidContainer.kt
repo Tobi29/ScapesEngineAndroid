@@ -2,59 +2,62 @@ package org.tobi29.scapes.engine.android
 
 import android.app.AlertDialog
 import android.content.Context
-import android.graphics.Typeface
 import android.os.Handler
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
+import org.tobi29.io.ByteBufferNative
+import org.tobi29.io.ByteViewE
+import org.tobi29.io.viewE
+import org.tobi29.logging.KLogging
 import org.tobi29.scapes.engine.Container
-import org.tobi29.scapes.engine.ScapesEngine
-import org.tobi29.scapes.engine.android.openal.AndroidOpenAL
-import org.tobi29.scapes.engine.android.opengles.GLAndroidGLES
-import org.tobi29.scapes.engine.android.opengles.GOSAndroidGLES
-import org.tobi29.scapes.engine.backends.openal.openal.OpenALSoundSystem
-import org.tobi29.scapes.engine.graphics.Font
+import org.tobi29.scapes.engine.ScapesEngineBackend
+import org.tobi29.scapes.engine.backends.opengles.GLESHandle
+import org.tobi29.scapes.engine.backends.opengles.GLESImpl
 import org.tobi29.scapes.engine.gui.GuiController
-import org.tobi29.scapes.engine.utils.AtomicReference
-import org.tobi29.scapes.engine.utils.io.ByteBuffer
-import org.tobi29.scapes.engine.utils.io.IOException
-import org.tobi29.scapes.engine.utils.io.NativeByteBufferProvider
-import org.tobi29.scapes.engine.utils.io.ReadSource
-import org.tobi29.scapes.engine.utils.io.filesystem.FileCache
-import org.tobi29.scapes.engine.utils.io.filesystem.FilePath
-import org.tobi29.scapes.engine.utils.logging.KLogging
-import java.io.File
+import org.tobi29.stdex.atomic.AtomicBoolean
+import org.tobi29.stdex.atomic.AtomicReference
+import org.tobi29.utils.sleep
 
 class AndroidContainer(
-        override val engine: ScapesEngine,
-        context: Context,
-        private val handler: Handler,
-        private val typefaceCache: FilePath,
-        private val stop: () -> Unit
-) : Container {
+    backend: ScapesEngineBackend,
+    context: Context,
+    private val handler: Handler,
+    private val stop: () -> Unit
+) : Container, ScapesEngineBackend by backend {
     val view get() = attachedView.get()
-    override val gos = GOSAndroidGLES(engine)
-    override val sounds = OpenALSoundSystem(engine, AndroidOpenAL(context), 16,
-            50.0)
+    private val glh = GLESHandle(this)
+    override val gos get() = glh
     override val formFactor = Container.FormFactor.PHONE
     override val containerWidth get() = view?.containerWidth ?: 1
     override val containerHeight get() = view?.containerHeight ?: 1
-    private val gl = GLAndroidGLES(gos)
+    private val gl = GLESImpl(gos)
     private val attachedView = AtomicReference<ScapesEngineView?>()
     private var renderThread = AtomicReference<Thread?>(null)
+    private val reset = AtomicBoolean(false)
 
-    fun render(delta: Double,
-               view: ScapesEngineView,
-               width: Int,
-               height: Int) {
-        if (view != attachedView.get()) {
+    fun render(
+        delta: Double,
+        view: ScapesEngineView,
+        width: Int,
+        height: Int
+    ) {
+        val currentView = attachedView.get()
+                ?: throw IllegalStateException("No view attached")
+        if (view != currentView) {
             throw IllegalStateException("Different view attached")
         }
         val currentThread = Thread.currentThread()
         if (!renderThread.compareAndSet(null, currentThread)) {
             throw IllegalStateException("Rendering twice at the same time")
         }
+        if (reset.getAndSet(false)) view.engine.graphics.reset()
         try {
-            engine.graphics.render(gl, delta, width, height)
+            while (!view.engine.graphics.render(
+                    gl, delta, width, height,
+                    containerWidth, containerHeight
+                )) {
+                sleep(1L)
+            }
         } finally {
             if (!renderThread.compareAndSet(currentThread, null)) {
                 throw IllegalStateException("Rendering twice at the same time")
@@ -63,64 +66,27 @@ class AndroidContainer(
     }
 
     fun attachView(view: ScapesEngineView) {
-        if (!attachedView.compareAndSet(null, view)) {
+        if (!attachedView.compareAndSet(null, view))
             throw IllegalStateException("A view is already attached")
-        }
         view.setRenderer(ScapesEngineRenderer(this))
     }
 
     fun detachView(view: ScapesEngineView) {
-        if (!attachedView.compareAndSet(view, null)) {
+        if (attachedView.getAndSet(null) != view)
             throw IllegalStateException("No or a different view is attached")
-        }
-        engine.graphics.reset()
+        view.engine.graphics.reset()
     }
 
-    override fun updateContainer() {
+    fun resetGL() {
+        reset.set(true)
     }
 
-    override fun update(delta: Double) {
-        view?.let { view ->
-            while (view.deviceEvents.isNotEmpty()) {
-                engine.events.fire(view.deviceEvents.poll())
-            }
-        }
-    }
+    override fun updateContainer() {}
 
-    override fun loadFont(asset: ReadSource): Font? {
-        try {
-            val cache = typefaceCache
-            var typeface: Typeface? = null
-            while (typeface == null) {
-                val file = FileCache.retrieve(cache,
-                        FileCache.store(cache, asset))
-                try {
-                    if (file != null) {
-                        typeface = Typeface.createFromFile(File(file.toUri()))
-                    }
-                } catch (e: RuntimeException) {
-                    logger.warn(e) { "Failed to load typeface from cache" }
-                }
-            }
-            return AndroidFont(typeface)
-        } catch (e: IOException) {
-            logger.error(e) { "Failed to load font" }
-        }
-        return null
-    }
+    override fun update(delta: Double) {}
 
-    override fun allocate(capacity: Int): ByteBuffer {
-        return NativeByteBufferProvider.allocate(capacity)
-    }
-
-    override fun reallocate(buffer: ByteBuffer): ByteBuffer {
-        return NativeByteBufferProvider.reallocate(buffer)
-    }
-
-    override fun run() {
-        throw UnsupportedOperationException(
-                "Android backend should be called from GLThread loop")
-    }
+    override fun allocateNative(size: Int): ByteViewE =
+        ByteBufferNative(size).viewE
 
     override fun clipboardCopy(value: String) {
     }
@@ -129,39 +95,49 @@ class AndroidContainer(
         return ""
     }
 
-    override fun message(messageType: Container.MessageType,
-                         title: String,
-                         message: String) {
+    override fun message(
+        messageType: Container.MessageType,
+        title: String,
+        message: String
+    ) {
         val view = view ?: return
         handler.post {
             val context = view.context
             AlertDialog.Builder(context).setTitle(title).setMessage(
-                    message).setPositiveButton(
-                    "OK") { _, _ -> }.create().show()
+                message
+            ).setPositiveButton(
+                "OK"
+            ) { _, _ -> }.create().show()
         }
     }
 
-    override fun dialog(title: String,
-                        text: GuiController.TextFieldData,
-                        multiline: Boolean) {
+    override fun dialog(
+        title: String,
+        text: GuiController.TextFieldData,
+        multiline: Boolean
+    ) {
         val view = view ?: return
         handler.post {
             val context = view.context
             val editText = EditText(context)
             editText.setText(text.text.toString())
             val dialog = AlertDialog.Builder(context).setTitle(
-                    title).setView(
-                    editText).setPositiveButton("Done") { _, _ ->
+                title
+            ).setView(
+                editText
+            ).setPositiveButton("Done") { _, _ ->
                 if (text.text.isNotEmpty()) {
                     text.text.clear()
                 }
                 text.text.append(editText.text)
                 text.cursor = text.text.length
+                text.dirty.set(true)
             }.create()
             dialog.show()
             editText.requestFocus()
             val imm = editText.context.getSystemService(
-                    Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                Context.INPUT_METHOD_SERVICE
+            ) as InputMethodManager
             imm.showSoftInput(editText, InputMethodManager.SHOW_FORCED)
         }
     }

@@ -14,18 +14,15 @@
  * limitations under the License.
  */
 
-apply from: "$rootDir/resources/scapesenginemodulekotlin.gradle"
+apply from: "$rootDir/resources/modulekotlinandroid.gradle"
 
 android {
     defaultConfig {
         minSdkVersion 1
-        targetSdkVersion 26
-        versionCode = 1
-        versionName = version
         consumerProguardFiles "proguard-rules.pro"
     }
 }
 
 dependencies {
-    implementation rootProject.ext.scapesEngineUtilsJVM
+    api rootProject.ext.scapesEngineProfilerJVM
 }

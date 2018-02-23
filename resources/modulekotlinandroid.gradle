@@ -15,12 +15,18 @@
  */
 
 apply plugin: "com.android.library"
-apply plugin: "kotlin-android"
-apply plugin: "com.github.dcendents.android-maven"
+apply plugin: "maven-publish"
+apply plugin: "kotlin-platform-android"
+apply plugin: "digital.wup.android-maven-publish"
 
 android {
-    compileSdkVersion = 26
-    buildToolsVersion = androidBuildToolsVersion
+    compileSdkVersion = 27
+
+    defaultConfig {
+        targetSdkVersion 27
+        versionCode = 1
+        versionName = version
+    }
 
     lintOptions {
         abortOnError = false
@@ -36,6 +42,17 @@ task sourcesJar(type: Jar) {
     from android.sourceSets.main.java.srcDirs
 }
 
-artifacts {
-    archives sourcesJar
+publishing {
+    publications {
+        mavenAar(MavenPublication) {
+            from components.android
+        }
+        mavenJava(MavenPublication) {
+            from components.android
+
+            artifact sourcesJar {
+                classifier "sources"
+            }
+        }
+    }
 }

@@ -14,58 +14,76 @@
  * limitations under the License.
  */
 
-package org.tobi29.scapes.engine.android.opengles
+package org.tobi29.scapes.engine.backends.opengles
 
+import org.tobi29.io.ByteViewRO
 import org.tobi29.scapes.engine.graphics.GL
 import org.tobi29.scapes.engine.graphics.ModelHybrid
 import org.tobi29.scapes.engine.graphics.RenderType
 import org.tobi29.scapes.engine.graphics.Shader
-import org.tobi29.scapes.engine.utils.assert
-import org.tobi29.scapes.engine.utils.io.ByteBuffer
+import org.tobi29.stdex.assert
 
-internal class VAOHybrid(private val vbo1: VBO,
-                         private val vbo2: VBO,
-                         private val renderType: RenderType) : VAO(
-        vbo1.engine), ModelHybrid {
-    private var arrayID = 0
+internal class VAOHybrid(
+    private val vbo1: VBO,
+    private val vbo2: VBO,
+    private val renderType: RenderType
+) : VAO(
+    vbo1.glh
+), ModelHybrid {
+    private var arrayID = GLVAO_EMPTY
 
-    override fun render(gl: GL,
-                        shader: Shader): Boolean {
+    override fun render(
+        gl: GL,
+        shader: Shader
+    ): Boolean {
         throw UnsupportedOperationException(
-                "Cannot render hybrid VAO without length parameter")
+            "Cannot render hybrid VAO without length parameter"
+        )
     }
 
-    override fun render(gl: GL,
-                        shader: Shader,
-                        length: Int): Boolean {
+    override fun render(
+        gl: GL,
+        shader: Shader,
+        length: Int
+    ): Boolean {
         if (!ensureStored(gl)) {
             return false
         }
         gl.check()
         shader(gl, shader)
-        glBindVertexArray(arrayID)
-        glDrawArrays(GLUtils.renderType(renderType), 0, length)
+        glh.glBindVertexArray(arrayID)
+        glh.glDrawArrays(glh.renderType(renderType), 0, length)
         return true
     }
 
-    override fun renderInstanced(gl: GL,
-                                 shader: Shader,
-                                 count: Int): Boolean {
+    override fun renderInstanced(
+        gl: GL,
+        shader: Shader,
+        count: Int
+    ): Boolean {
         throw UnsupportedOperationException(
-                "Cannot render hybrid VAO without length parameter")
+            "Cannot render hybrid VAO without length parameter"
+        )
     }
 
-    override fun renderInstanced(gl: GL,
-                                 shader: Shader,
-                                 length: Int,
-                                 count: Int): Boolean {
+    override fun renderInstanced(
+        gl: GL,
+        shader: Shader,
+        length: Int,
+        count: Int
+    ): Boolean {
         if (!ensureStored(gl)) {
             return false
         }
         gl.check()
         shader(gl, shader)
-        glBindVertexArray(arrayID)
-        glDrawArraysInstanced(GLUtils.renderType(renderType), 0, length, count)
+        glh.glBindVertexArray(arrayID)
+        glh.glDrawArraysInstanced(
+            glh.renderType(renderType),
+            0,
+            length,
+            count
+        )
         return true
     }
 
@@ -79,8 +97,8 @@ internal class VAOHybrid(private val vbo1: VBO,
         }
         isStored = true
         gl.check()
-        arrayID = glGenVertexArrays()
-        glBindVertexArray(arrayID)
+        arrayID = glh.glGenVertexArrays()
+        glh.glBindVertexArray(arrayID)
         vbo1.store(gl, weak)
         vbo2.store(gl, weak)
         detach = gl.vaoTracker.attach(this)
@@ -95,22 +113,25 @@ internal class VAOHybrid(private val vbo1: VBO,
             gl.check()
             vbo1.dispose(gl)
             vbo2.dispose(gl)
-            glDeleteVertexArrays(arrayID)
+            glh.glDeleteVertexArrays(arrayID)
         }
         isStored = false
         detach?.invoke()
         detach = null
-        markAsDisposed = false
+        markDisposed = false
         vbo1.reset()
         vbo2.reset()
     }
 
-    override fun strideStream(): Int {
-        return vbo2.stride()
+    override fun buffer(gl: GL, buffer: ByteViewRO) {
+        vbo1.replaceBuffer(gl, buffer)
     }
 
-    override fun bufferStream(gl: GL,
-                              buffer: ByteBuffer) {
+    override val stride get() = vbo1.stride()
+
+    override fun bufferStream(gl: GL, buffer: ByteViewRO) {
         vbo2.replaceBuffer(gl, buffer)
     }
+
+    override fun strideStream(): Int = vbo2.stride()
 }

@@ -17,7 +17,7 @@
 package org.tobi29.scapes.engine.android.parcel
 
 import android.os.Bundle
-import org.tobi29.scapes.engine.utils.tag.*
+import org.tobi29.io.tag.*
 
 internal fun Bundle.readMap() = TagMap { readMap(this) }
 

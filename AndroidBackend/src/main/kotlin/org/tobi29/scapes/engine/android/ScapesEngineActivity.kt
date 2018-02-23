@@ -19,21 +19,18 @@ package org.tobi29.scapes.engine.android
 import android.app.Activity
 import android.os.Bundle
 import android.os.Handler
-import org.tobi29.scapes.engine.Container
+import kotlinx.coroutines.experimental.runBlocking
+import org.tobi29.coroutines.defaultBackgroundExecutor
+import org.tobi29.io.filesystem.FileCache
+import org.tobi29.io.filesystem.path
+import org.tobi29.io.tag.MutableTagMap
+import org.tobi29.logging.KLogging
 import org.tobi29.scapes.engine.ScapesEngine
 import org.tobi29.scapes.engine.gui.GuiAction
 import org.tobi29.scapes.engine.gui.GuiStyle
-import org.tobi29.scapes.engine.utils.Crashable
-import org.tobi29.scapes.engine.utils.io.filesystem.FileCache
-import org.tobi29.scapes.engine.utils.io.filesystem.path
-import org.tobi29.scapes.engine.utils.logging.KLogging
-import org.tobi29.scapes.engine.utils.tag.MutableTagMap
-import org.tobi29.scapes.engine.utils.task.TaskExecutor
-import kotlin.system.exitProcess
 
-abstract class ScapesEngineActivity : Activity(), Crashable {
-    private val taskExecutor = TaskExecutor(this, "Activity")
-    private var container: AndroidContainer? = null
+abstract class ScapesEngineActivity : Activity() {
+    private var container: Pair<AndroidContainer, ScapesEngine>? = null
     private var view: ScapesEngineView? = null
     val handler = Handler()
 
@@ -46,18 +43,17 @@ abstract class ScapesEngineActivity : Activity(), Crashable {
         val cache = path(cacheDir.toString()).resolve("AndroidTypeface")
         FileCache.check(cache)
         val (defaultGuiStyle, configMap) = onCreateEngine()
-        val backend: (ScapesEngine) -> Container = { engine ->
-            AndroidContainer(engine, this, handler, cache, {
-                handler.post {
-                    finishAndRemoveTask()
-                }
-            }).also { container = it }
-        }
-        val engine = ScapesEngine(backend, defaultGuiStyle, taskExecutor, configMap)
+        val container = AndroidContainer(ScapesEngineAndroid(this, cache), this,
+                handler, {
+            handler.post {
+                finishAndRemoveTask()
+            }
+        })
+        val engine = ScapesEngine(container, defaultGuiStyle,
+                defaultBackgroundExecutor, configMap)
+        this.container = container to engine
         onInitEngine(engine)
-        val container = this.container
-                ?: throw IllegalStateException("No container got created")
-        view = ScapesEngineView(this).also {
+        view = ScapesEngineView(this, engine).also {
             container.attachView(it)
             setContentView(it)
         }
@@ -67,39 +63,31 @@ abstract class ScapesEngineActivity : Activity(), Crashable {
     override fun onPause() {
         super.onPause()
         view?.onPause()
-        container?.engine?.halt()
+        runBlocking { container?.second?.halt() }
     }
 
     override fun onResume() {
         super.onResume()
-        container?.engine?.start()
+        container?.second?.start()
         view?.onResume()
     }
 
     override fun onBackPressed() {
-        container?.engine?.guiStack?.fireAction(GuiAction.BACK)
+        container?.second?.guiStack?.fireAction(GuiAction.BACK)
     }
 
     override fun onDestroy() {
         super.onDestroy()
         view?.let {
-            container?.detachView(it)
+            container?.let { (container, _) ->
+                container.detachView(it)
+            }
             it.dispose()
             view = null
         }
         container?.let {
-            it.engine.dispose()
+            runBlocking { it.second.dispose() }
             container = null
-        }
-        taskExecutor.shutdown()
-    }
-
-    override fun crash(e: Throwable): Nothing {
-        try {
-            logger.error { "Engine crashed: $e" }
-            e.printStackTrace()
-        } finally {
-            exitProcess(1)
         }
     }
 
