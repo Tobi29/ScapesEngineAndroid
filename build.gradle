@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2017 Tobi29
+ * Copyright 2012-2018 Tobi29
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,11 @@
  * limitations under the License.
  */
 
-buildscript { 
-    ext.kotlin_version = '1.2.21'
-
-    def kotlinVersion = "1.2.30-eap-16"
+buildscript {
+    def kotlinVersion = "1.2.30"
     def dokkaVersion = "0.9.15"
     def androidBuildVersion = "3.0.1"
-    def androidMavenVersion = "3.1.1"
+    def androidMavenVersion = "3.3.0"
 
     repositories {
         jcenter()
@@ -38,7 +36,7 @@ buildscript {
         classpath "org.jetbrains.dokka:dokka-gradle-plugin:$dokkaVersion"
         classpath "com.android.tools.build:gradle:$androidBuildVersion"
         classpath "digital.wup:android-maven-publish:$androidMavenVersion"
-    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version" }
+    }
 }
 
 allprojects {
@@ -60,7 +58,7 @@ allprojects {
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = "4.4.1"
+    gradleVersion = "4.6"
     distributionUrl =
             "https://services.gradle.org/distributions/gradle-${gradleVersion}-all.zip"
 }
