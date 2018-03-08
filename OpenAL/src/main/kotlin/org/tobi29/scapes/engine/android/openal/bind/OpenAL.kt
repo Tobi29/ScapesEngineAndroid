@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 
-include "AndroidBackend"
-include "AndroidParcelTag"
-include "AndroidSQLite"
-include "AndroidSysTrace"
-include "GLESBackend"
-include "OpenAL"
+package org.tobi29.scapes.engine.android.openal.bind
+
+internal object OpenAL {
+    init {
+        System.loadLibrary("openal")
+    }
+
+    fun touch() {}
+}

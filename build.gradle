@@ -65,7 +65,7 @@ task wrapper(type: Wrapper) {
 
 ext {
     slf4jVersion = "1.7.25"
-    scapesEngineVersion = "0.0.11"
+    scapesEngineVersion = "0.0.12"
 
     slf4jAndroid = "org.slf4j:slf4j-android:$slf4jVersion"
 

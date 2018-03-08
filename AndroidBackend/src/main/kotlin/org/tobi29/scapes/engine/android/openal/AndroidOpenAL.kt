@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2017 Tobi29
+ * Copyright 2012-2018 Tobi29
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,56 +22,93 @@ import org.tobi29.io.ByteViewRO
 import org.tobi29.io.readAsByteArray
 import org.tobi29.logging.KLogging
 import org.tobi29.math.vector.Vector3d
+import org.tobi29.scapes.engine.android.openal.bind.AL
+import org.tobi29.scapes.engine.android.openal.bind.ALC
+import org.tobi29.scapes.engine.android.openal.bind.SOFTPauseDevice
 import org.tobi29.scapes.engine.backends.openal.openal.OpenAL
 import org.tobi29.scapes.engine.sound.AudioFormat
 import org.tobi29.scapes.engine.sound.SoundException
 import org.tobi29.stdex.math.toRad
-import paulscode.android.sound.ALAN
 import kotlin.math.cos
 import kotlin.math.sin
 
-class AndroidOpenAL(private val context: Context) : OpenAL {
+class AndroidOpenAL(private val androidContext: Context) : OpenAL {
+    private var device = 0L
+    private var context = 0L
+    private val floatBuffer = FloatArray(6)
     private val intBuffer = IntArray(1)
 
     override fun checkError(message: String) {
-        val error = ALAN.alGetError()
-        if (error != ALAN.AL_NO_ERROR) {
+        val error = AL.alGetError()
+        if (error != AL.AL_NO_ERROR) {
             throw SoundException(
-                ALAN.alGetString(error) + " in " + message
+                AL.alGetString(error) + " in " + message
             )
         }
     }
 
     override fun create(speedOfSound: Double) {
-        val audioManager = context.getSystemService(
+        val audioManager = androidContext.getSystemService(
             Context.AUDIO_SERVICE
         ) as AudioManager
         val contextAttributes = IntArray(3)
-        contextAttributes[0] = ALAN.ALC_FREQUENCY
+        contextAttributes[0] = ALC.ALC_FREQUENCY
         contextAttributes[1] = audioManager.getProperty(
             AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE
         ).toInt()
-        ALAN.create(contextAttributes)
-        logger.info(
-            "OpenAL: ${ALAN.alGetString(
-                ALAN.AL_VERSION
-            )} (Vendor: ${ALAN.alGetString(
-                ALAN.AL_VENDOR
-            )}, Renderer: ${ALAN.alGetString(
-                ALAN.AL_RENDERER
+
+        device = ALC.alcOpenDevice(null)
+        if (device == 0L) {
+            throw IllegalStateException(
+                "Failed to open the default device."
+            )
+        }
+        context = ALC.alcCreateContext(device, contextAttributes)
+        if (context == 0L) {
+            throw IllegalStateException(
+                "Failed to create an OpenAL context."
+            )
+        }
+        ALC.alcMakeContextCurrent(context)
+        logger.info {
+            "OpenAL: ${AL.alGetString(
+                AL.AL_VERSION
+            )} (Vendor: ${AL.alGetString(
+                AL.AL_VENDOR
+            )}, Renderer: ${AL.alGetString(
+                AL.AL_RENDERER
             )})"
-        )
-        ALAN.alSpeedOfSound(speedOfSound.toFloat())
-        ALAN.alListenerfv(
-            ALAN.AL_ORIENTATION,
-            floatArrayOf(0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f)
-        )
-        ALAN.alListener3f(ALAN.AL_POSITION, 0.0f, 0.0f, 0.0f)
-        ALAN.alListener3f(ALAN.AL_VELOCITY, 0.0f, 0.0f, 0.0f)
+        }
+        AL.alSpeedOfSound(speedOfSound.toFloat())
+        AL.alDistanceModel(AL.AL_INVERSE_DISTANCE_CLAMPED)
+        floatBuffer[0] = 0.0f
+        floatBuffer[1] = -1.0f
+        floatBuffer[2] = 0.0f
+        floatBuffer[3] = 0.0f
+        floatBuffer[4] = 0.0f
+        floatBuffer[5] = 1.0f
+        AL.alListenerfv(AL.AL_ORIENTATION, floatBuffer)
+        AL.alListener3f(AL.AL_POSITION, 0.0f, 0.0f, 0.0f)
+        AL.alListener3f(AL.AL_VELOCITY, 0.0f, 0.0f, 0.0f)
+    }
+
+    override fun resume() {
+        if (device != 0L) SOFTPauseDevice.alcDeviceResumeSOFT(device)
+    }
+
+    override fun pause() {
+        if (device != 0L) SOFTPauseDevice.alcDevicePauseSOFT(device)
     }
 
     override fun destroy() {
-        ALAN.destroy()
+        if (context != 0L) {
+            ALC.alcDestroyContext(context)
+            context = 0
+        }
+        if (device != 0L) {
+            ALC.alcCloseDevice(device)
+            device = 0
+        }
     }
 
     override fun setListener(
@@ -83,79 +120,61 @@ class AndroidOpenAL(private val context: Context) : OpenAL {
         val lookX = cos(orientation.z.toFloat().toRad()) * cos
         val lookY = sin(orientation.z.toFloat().toRad()) * cos
         val lookZ = sin(orientation.x.toFloat().toRad())
-        ALAN.alListenerfv(
-            ALAN.AL_ORIENTATION,
-            floatArrayOf(lookX, lookY, lookZ, 0.0f, 0.0f, 1.0f)
-        )
-        ALAN.alListener3f(
-            ALAN.AL_POSITION, position.x.toFloat(),
+        floatBuffer[0] = lookX
+        floatBuffer[1] = lookY
+        floatBuffer[2] = lookZ
+        floatBuffer[3] = 0.0f
+        floatBuffer[4] = 0.0f
+        floatBuffer[5] = 1.0f
+        AL.alListenerfv(AL.AL_ORIENTATION, floatBuffer)
+        AL.alListener3f(
+            AL.AL_POSITION, position.x.toFloat(),
             position.y.toFloat(), position.z.toFloat()
         )
-        ALAN.alListener3f(
-            ALAN.AL_VELOCITY, velocity.x.toFloat(),
+        AL.alListener3f(
+            AL.AL_VELOCITY, velocity.x.toFloat(),
             velocity.y.toFloat(), velocity.z.toFloat()
         )
     }
 
     override fun createSource(): Int {
-        ALAN.alGenSources(1, intBuffer)
+        AL.alGenSources(1, intBuffer)
         return intBuffer[0]
     }
 
     override fun deleteSource(id: Int) {
         intBuffer[0] = id
-        ALAN.alDeleteSources(1, intBuffer)
+        AL.alDeleteSources(1, intBuffer)
     }
 
     override fun setBuffer(
         id: Int,
         value: Int
     ) {
-        ALAN.alSourcei(id, ALAN.AL_BUFFER, value)
+        AL.alSourcei(id, AL.AL_BUFFER, value)
     }
 
     override fun setPitch(
         id: Int,
         value: Double
     ) {
-        ALAN.alSourcef(id, ALAN.AL_PITCH, value.toFloat())
+        AL.alSourcef(id, AL.AL_PITCH, value.toFloat())
     }
 
     override fun setGain(
         id: Int,
         value: Double
     ) {
-        ALAN.alSourcef(id, ALAN.AL_GAIN, value.toFloat())
-    }
-
-    override fun setReferenceDistance(
-        id: Int,
-        value: Double
-    ) {
-        ALAN.alSourcef(id, ALAN.AL_REFERENCE_DISTANCE, value.toFloat())
-    }
-
-    override fun setRolloffFactor(
-        id: Int,
-        value: Double
-    ) {
-        ALAN.alSourcef(id, ALAN.AL_ROLLOFF_FACTOR, value.toFloat())
-    }
-
-    override fun setMaxDistance(
-        id: Int,
-        value: Double
-    ) {
-        ALAN.alSourcef(id, ALAN.AL_MAX_DISTANCE, value.toFloat())
+        AL.alSourcef(id, AL.AL_GAIN, value.toFloat())
     }
 
     override fun setLooping(
         id: Int,
         value: Boolean
     ) {
-        ALAN.alSourcei(
-            id, ALAN.AL_LOOPING,
-            if (value) ALAN.AL_TRUE else ALAN.AL_FALSE
+        AL.alSourcei(
+            id, AL.AL_LOOPING,
+            if (value) AL.AL_TRUE else AL.AL_FALSE
         )
     }
 
@@ -163,9 +182,9 @@ class AndroidOpenAL(private val context: Context) : OpenAL {
         id: Int,
         value: Boolean
     ) {
-        ALAN.alSourcei(
-            id, ALAN.AL_SOURCE_RELATIVE,
-            if (value) ALAN.AL_TRUE else ALAN.AL_FALSE
+        AL.alSourcei(
+            id, AL.AL_SOURCE_RELATIVE,
+            if (value) AL.AL_TRUE else AL.AL_FALSE
         )
     }
 
@@ -173,8 +192,8 @@ class AndroidOpenAL(private val context: Context) : OpenAL {
         id: Int,
         pos: Vector3d
     ) {
-        ALAN.alSource3f(
-            id, ALAN.AL_POSITION, pos.x.toFloat(), pos.y.toFloat(),
+        AL.alSource3f(
+            id, AL.AL_POSITION, pos.x.toFloat(), pos.y.toFloat(),
             pos.z.toFloat()
         )
     }
@@ -183,28 +202,49 @@ class AndroidOpenAL(private val context: Context) : OpenAL {
         id: Int,
         vel: Vector3d
     ) {
-        ALAN.alSource3f(
-            id, ALAN.AL_VELOCITY, vel.x.toFloat(), vel.y.toFloat(),
+        AL.alSource3f(
+            id, AL.AL_VELOCITY, vel.x.toFloat(), vel.y.toFloat(),
             vel.z.toFloat()
         )
     }
 
+    override fun setReferenceDistance(
+        id: Int,
+        value: Double
+    ) {
+        AL.alSourcef(id, AL.AL_REFERENCE_DISTANCE, value.toFloat())
+    }
+
+    override fun setRolloffFactor(
+        id: Int,
+        value: Double
+    ) {
+        AL.alSourcef(id, AL.AL_ROLLOFF_FACTOR, value.toFloat())
+    }
+
+    override fun setMaxDistance(
+        id: Int,
+        value: Double
+    ) {
+        AL.alSourcef(id, AL.AL_MAX_DISTANCE, value.toFloat())
+    }
+
     override fun play(id: Int) {
-        ALAN.alSourcePlay(id)
+        AL.alSourcePlay(id)
     }
 
     override fun stop(id: Int) {
-        ALAN.alSourceStop(id)
+        AL.alSourceStop(id)
     }
 
     override fun createBuffer(): Int {
-        ALAN.alGenBuffers(1, intBuffer)
+        AL.alGenBuffers(1, intBuffer)
         return intBuffer[0]
     }
 
     override fun deleteBuffer(id: Int) {
         intBuffer[0] = id
-        ALAN.alDeleteBuffers(1, intBuffer)
+        AL.alDeleteBuffers(1, intBuffer)
     }
 
     override fun storeBuffer(
@@ -213,38 +253,34 @@ class AndroidOpenAL(private val context: Context) : OpenAL {
         buffer: ByteViewRO,
         rate: Int
     ) {
-        when (format) {
-            AudioFormat.MONO -> ALAN.alBufferData(
-                id, ALAN.AL_FORMAT_MONO16,
-                buffer.readAsByteArray(),
-                buffer.size, rate
-            )
-            AudioFormat.STEREO -> ALAN.alBufferData(
-                id, ALAN.AL_FORMAT_STEREO16,
-                buffer.readAsByteArray(),
-                buffer.size, rate
-            )
-        }
+        AL.alBufferData(
+            id,
+            when (format) {
+                AudioFormat.MONO -> AL.AL_FORMAT_MONO16
+                AudioFormat.STEREO -> AL.AL_FORMAT_STEREO16
+            },
+            buffer.readAsByteArray(), buffer.size,
+            rate
+        )
     }
 
     override fun isPlaying(id: Int): Boolean {
-        ALAN.alGetSourcei(id, ALAN.AL_SOURCE_STATE, intBuffer)
-        return intBuffer[0] == ALAN.AL_PLAYING
+        AL.alGetSourcei(id, AL.AL_SOURCE_STATE, intBuffer)
+        return intBuffer[0] == AL.AL_PLAYING
     }
 
     override fun isStopped(id: Int): Boolean {
-        ALAN.alGetSourcei(id, ALAN.AL_SOURCE_STATE, intBuffer)
-        val state = intBuffer[0]
-        return state != ALAN.AL_PLAYING && state != ALAN.AL_PAUSED
+        AL.alGetSourcei(id, AL.AL_SOURCE_STATE, intBuffer)
+        return intBuffer[0] != AL.AL_PLAYING && intBuffer[0] != AL.AL_PAUSED
     }
 
     override fun getBuffersQueued(id: Int): Int {
-        ALAN.alGetSourcei(id, ALAN.AL_BUFFERS_QUEUED, intBuffer)
+        AL.alGetSourcei(id, AL.AL_BUFFERS_QUEUED, intBuffer)
         return intBuffer[0]
     }
 
     override fun getBuffersProcessed(id: Int): Int {
-        ALAN.alGetSourcei(id, ALAN.AL_BUFFERS_PROCESSED, intBuffer)
+        AL.alGetSourcei(id, AL.AL_BUFFERS_PROCESSED, intBuffer)
         return intBuffer[0]
     }
 
@@ -253,16 +289,16 @@ class AndroidOpenAL(private val context: Context) : OpenAL {
         buffer: Int
     ) {
         intBuffer[0] = buffer
-        ALAN.alSourceQueueBuffers(id, 1, intBuffer)
+        AL.alSourceQueueBuffers(id, 1, intBuffer)
     }
 
     override fun unqueue(id: Int): Int {
-        ALAN.alSourceUnqueueBuffers(id, 1, intBuffer)
+        AL.alSourceUnqueueBuffers(id, 1, intBuffer)
         return intBuffer[0]
     }
 
     override fun getBuffer(id: Int): Int {
-        ALAN.alGetSourcei(id, ALAN.AL_BUFFER, intBuffer)
+        AL.alGetSourcei(id, AL.AL_BUFFER, intBuffer)
         return intBuffer[0]
     }
 

@@ -14,9 +14,13 @@
  * limitations under the License.
  */
 
-include "AndroidBackend"
-include "AndroidParcelTag"
-include "AndroidSQLite"
-include "AndroidSysTrace"
-include "GLESBackend"
-include "OpenAL"
+package org.tobi29.scapes.engine.android.openal.bind
+
+object SOFTPauseDevice {
+    init {
+        OpenAL.touch()
+    }
+
+    external fun alcDeviceResumeSOFT(p0: Long)
+    external fun alcDevicePauseSOFT(p0: Long)
+}
