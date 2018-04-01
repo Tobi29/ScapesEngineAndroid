@@ -110,15 +110,6 @@ inline val InputDevice.isFullKeyboard
     get() = isType(InputDevice.SOURCE_KEYBOARD)
             && keyboardType == InputDevice.KEYBOARD_TYPE_ALPHABETIC
 
-val Context.notificationChannelService: String
-    @TargetApi(26) get() =
-        registerNotificationChannel(
-            id = "foreground-service",
-            name = "Foreground Service",
-            description = "Notifies about active foreground services",
-            importance = NotificationManager.IMPORTANCE_LOW
-        )
-
 @TargetApi(26)
 fun Context.registerNotificationChannel(
     id: String,
