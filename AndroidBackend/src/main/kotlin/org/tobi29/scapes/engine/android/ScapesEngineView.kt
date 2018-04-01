@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2017 Tobi29
+ * Copyright 2012-2018 Tobi29
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,17 +66,16 @@ class ScapesEngineView(
 
         override fun onInputDeviceAdded(deviceId: Int) {
             val device = inputManager.getInputDevice(deviceId)
-            if (device.isFullKeyboard()
+            if(device.isVirtual) return
+            if (device.isFullKeyboard
                 || device.isType(InputDevice.SOURCE_MOUSE)) {
-                if (device.isFullKeyboard()) {
+                if (device.isFullKeyboard)
                     logger.info { "Detected keyboard: ${device.name}" }
-                }
-                if (device.isType(InputDevice.SOURCE_MOUSE)) {
+                if (device.isType(InputDevice.SOURCE_MOUSE))
                     logger.info { "Detected mouse: ${device.name}" }
-                }
-                if (defaultDevices == 0) {
+
+                if (defaultDevices == 0)
                     engine.events.fire(Controller.AddEvent(defaultController))
-                }
                 defaultDevices++
                 devices.put(deviceId, defaultController)
             }
@@ -97,6 +96,7 @@ class ScapesEngineView(
 
         override fun onInputDeviceChanged(deviceId: Int) {
             onInputDeviceRemoved(deviceId)
+            onInputDeviceAdded(deviceId)
         }
     }
 
