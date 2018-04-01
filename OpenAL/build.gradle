@@ -41,5 +41,5 @@ android {
 }
 
 dependencies {
-    implementation rootProject.ext.scapesEngineSTDExJVM
+    implementation rootProject.ext.scapesEngineJVM("STDEx")
 }
