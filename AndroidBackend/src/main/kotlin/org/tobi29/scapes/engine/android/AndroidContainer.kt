@@ -1,3 +1,19 @@
+/*
+ * Copyright 2012-2018 Tobi29
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.tobi29.scapes.engine.android
 
 import android.app.AlertDialog
@@ -8,7 +24,6 @@ import android.widget.EditText
 import org.tobi29.io.ByteBufferNative
 import org.tobi29.io.ByteViewE
 import org.tobi29.io.viewE
-import org.tobi29.logging.KLogging
 import org.tobi29.scapes.engine.Container
 import org.tobi29.scapes.engine.ScapesEngineBackend
 import org.tobi29.scapes.engine.backends.opengles.GLESHandle
@@ -20,7 +35,6 @@ import org.tobi29.utils.sleep
 
 class AndroidContainer(
     backend: ScapesEngineBackend,
-    context: Context,
     private val handler: Handler,
     private val stop: () -> Unit
 ) : Container, ScapesEngineBackend by backend {
@@ -34,6 +48,10 @@ class AndroidContainer(
     private val attachedView = AtomicReference<ScapesEngineView?>()
     private var renderThread = AtomicReference<Thread?>(null)
     private val reset = AtomicBoolean(false)
+
+    init {
+        AndroidKeyMap.touch()
+    }
 
     fun render(
         delta: Double,
@@ -145,10 +163,4 @@ class AndroidContainer(
     override fun isRenderCall() = Thread.currentThread() === renderThread
 
     override fun stop() = stop.invoke()
-
-    companion object : KLogging() {
-        init {
-            AndroidKeyMap.touch()
-        }
-    }
 }
