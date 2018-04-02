@@ -106,7 +106,7 @@ class AndroidContainer(
     override fun allocateNative(size: Int): ByteViewE =
         ByteBufferNative(size).viewE
 
-    fun cursorCapture(value: Boolean) {
+    override fun cursorCapture(value: Boolean) {
         cursorCaptured = value
         events?.fire(CaptureCursorEvent(value))
     }
@@ -130,25 +130,4 @@ class AndroidContainer(
     override fun isRenderCall() = Thread.currentThread() === renderThread
 
     override fun stop() = stop.invoke()
-
-    // Old
-
-    override fun updateContainer() {}
-
-    private var mouseGrabbed = false
-
-    override fun update(delta: Double) {
-        val mouseGrabbed = view?.engine?.isMouseGrabbed() == true
-        if (mouseGrabbed != this.mouseGrabbed) {
-            this.mouseGrabbed = mouseGrabbed
-            cursorCapture(mouseGrabbed)
-        }
-    }
-
-    override fun clipboardCopy(value: String) {
-    }
-
-    override fun clipboardPaste(): String {
-        return ""
-    }
 }
