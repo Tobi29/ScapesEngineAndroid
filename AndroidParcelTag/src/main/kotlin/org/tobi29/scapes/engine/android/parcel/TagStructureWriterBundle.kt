@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2017 Tobi29
+ * Copyright 2012-2018 Tobi29
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,26 +23,34 @@ import org.tobi29.stdex.ArrayDeque
 
 class TagStructureWriterBundle(rootBundle: Bundle) : TagStructureWriter {
     private val stack = ArrayDeque<Pair<String?, Any>>()
-    private var bundle: Any = rootBundle
+    private var _bundle: Any = rootBundle
 
-    private fun bundle() = bundle as? Bundle
-            ?: throw IllegalStateException("Key operation when list")
+    private var bundle
+        get() = _bundle as? Bundle
+                ?: error("Key operation when list")
+        set(value) {
+            _bundle = value
+        }
 
-    private fun list() = bundle as? BundleList
-            ?: throw IllegalStateException("Non-key operation when not list")
+    private var list
+        get() = _bundle as? BundleList
+                ?: error("Non-key operation when not list")
+        set(value) {
+            _bundle = value
+        }
 
     override fun begin(root: TagMap) {}
 
     override fun end() {}
 
     override fun beginStructure(key: String) {
-        val bundle = bundle()
+        val bundle = bundle
         stack.push(Pair(key, bundle))
         this.bundle = Bundle()
     }
 
     override fun beginStructure() {
-        val list = list()
+        val list = list
         stack.push(Pair(null, list))
         this.bundle = Bundle()
     }
@@ -50,43 +58,43 @@ class TagStructureWriterBundle(rootBundle: Bundle) : TagStructureWriter {
     override fun endStructure() {
         val child = Bundle().apply {
             putString("Type", "Map")
-            putBundle("Value", bundle())
+            putBundle("Value", bundle)
         }
         val (key, parent) = stack.pop()
-        this.bundle = parent
+        _bundle = parent
         if (key != null) {
-            val bundle = bundle()
+            val bundle = bundle
             bundle.putBundle(key, child)
         } else {
-            val list = list()
+            val list = list
             list.addBundle(child)
         }
     }
 
     override fun structureEmpty(key: String) {
-        val bundle = bundle()
+        val bundle = bundle
         bundle.putBundle(key, Bundle().apply {
             putString("Type", "Map")
         })
     }
 
     override fun structureEmpty() {
-        val list = list()
+        val list = list
         list.addBundle(Bundle().apply {
             putString("Type", "Map")
         })
     }
 
     override fun beginList(key: String) {
-        val bundle = bundle()
+        val bundle = bundle
         stack.push(Pair(key, bundle))
-        this.bundle = ArrayList<Bundle>()
+        this.list = BundleList()
     }
 
     override fun beginList() {
-        val list = list()
+        val list = list
         stack.push(Pair(null, list))
-        this.bundle = ArrayList<Bundle>()
+        this.list = BundleList()
     }
 
     override fun beginListStructure() {
@@ -104,27 +112,27 @@ class TagStructureWriterBundle(rootBundle: Bundle) : TagStructureWriter {
     }
 
     override fun endList() {
-        val child = list().bundle
+        val child = list.bundle
         val (key, parent) = stack.pop()
-        this.bundle = parent
+        _bundle = parent
         if (key != null) {
-            val bundle = bundle()
+            val bundle = bundle
             bundle.putBundle(key, child)
         } else {
-            val list = list()
+            val list = list
             list.addBundle(child)
         }
     }
 
     override fun listEmpty(key: String) {
-        val bundle = bundle()
+        val bundle = bundle
         bundle.putBundle(key, Bundle().apply {
             putString("Type", "List")
         })
     }
 
     override fun listEmpty() {
-        val list = list()
+        val list = list
         list.addBundle(Bundle().apply {
             putString("Type", "List")
         })
@@ -134,7 +142,7 @@ class TagStructureWriterBundle(rootBundle: Bundle) : TagStructureWriter {
         key: String,
         tag: TagPrimitive
     ) {
-        val bundle = bundle()
+        val bundle = bundle
         when (tag) {
             TagUnit -> bundle.putBundle(key, Bundle().apply {
                 putString("Type", "Unit")
@@ -155,7 +163,7 @@ class TagStructureWriterBundle(rootBundle: Bundle) : TagStructureWriter {
     }
 
     override fun writePrimitiveTag(tag: TagPrimitive) {
-        val list = list()
+        val list = list
         when (tag) {
             TagUnit -> list.addBundle(Bundle().apply {
                 putString("Type", "Unit")
