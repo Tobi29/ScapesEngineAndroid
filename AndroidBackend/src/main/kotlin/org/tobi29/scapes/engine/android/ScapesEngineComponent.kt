@@ -43,7 +43,7 @@ class ScapesEngineComponent(
         FileCache.check(cache)
         val (defaultGuiStyle, configMap) = onCreateEngine()
         val container = AndroidContainer(ScapesEngineAndroid(context, cache),
-            handler, { handler.post { onStop() } })
+            { handler.post { onStop() } })
         val engine = ScapesEngine(
             container, defaultGuiStyle,
             defaultBackgroundExecutor, configMap

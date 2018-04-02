@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2017 Tobi29
+ * Copyright 2012-2018 Tobi29
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import org.tobi29.scapes.engine.graphics.Font
 import org.tobi29.scapes.engine.gui.GlyphRenderer
 
 class AndroidFont(private val typeface: Typeface) : Font {
-    override fun createGlyphRenderer(size: Int): GlyphRenderer {
-        return AndroidGlyphRenderer(typeface, size)
-    }
+    override fun createGlyphRenderer(size: Int): GlyphRenderer =
+         AndroidGlyphRenderer(typeface, size)
 }

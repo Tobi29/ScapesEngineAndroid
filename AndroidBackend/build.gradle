@@ -19,6 +19,7 @@ apply from: "$rootDir/resources/modulekotlinandroid.gradle"
 android {
     defaultConfig {
         minSdkVersion 18
+        consumerProguardFiles "proguard-rules.pro"
     }
 }
 

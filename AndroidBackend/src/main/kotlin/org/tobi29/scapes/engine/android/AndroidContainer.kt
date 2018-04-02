@@ -16,11 +16,6 @@
 
 package org.tobi29.scapes.engine.android
 
-import android.app.AlertDialog
-import android.content.Context
-import android.os.Handler
-import android.view.inputmethod.InputMethodManager
-import android.widget.EditText
 import org.tobi29.io.ByteBufferNative
 import org.tobi29.io.ByteViewE
 import org.tobi29.io.viewE
@@ -31,22 +26,26 @@ import org.tobi29.scapes.engine.backends.opengles.GLESImpl
 import org.tobi29.scapes.engine.gui.GuiController
 import org.tobi29.stdex.atomic.AtomicBoolean
 import org.tobi29.stdex.atomic.AtomicReference
+import org.tobi29.utils.EventDispatcher
 import org.tobi29.utils.sleep
 
 class AndroidContainer(
     backend: ScapesEngineBackend,
-    private val handler: Handler,
     private val stop: () -> Unit
 ) : Container, ScapesEngineBackend by backend {
-    val view get() = attachedView.get()
+    val view get() = attachedView.get()?.first
+    val events get() = attachedView.get()?.second
     private val glh = GLESHandle(this)
     override val gos get() = glh
     override val formFactor = Container.FormFactor.PHONE
     override val containerWidth get() = view?.containerWidth ?: 1
     override val containerHeight get() = view?.containerHeight ?: 1
     private val gl = GLESImpl(gos)
-    private val attachedView = AtomicReference<ScapesEngineView?>()
+    private val attachedView =
+        AtomicReference<Pair<ScapesEngineView, EventDispatcher>?>()
     private var renderThread = AtomicReference<Thread?>(null)
+    @kotlin.jvm.Volatile
+    private var cursorCaptured = false
     private val reset = AtomicBoolean(false)
 
     init {
@@ -59,7 +58,7 @@ class AndroidContainer(
         width: Int,
         height: Int
     ) {
-        val currentView = attachedView.get()
+        val currentView = attachedView.get()?.first
                 ?: throw IllegalStateException("No view attached")
         if (view != currentView) {
             throw IllegalStateException("Different view attached")
@@ -84,14 +83,19 @@ class AndroidContainer(
     }
 
     fun attachView(view: ScapesEngineView) {
-        if (!attachedView.compareAndSet(null, view))
+        val new = view to EventDispatcher(view.engine.events) {}
+        if (!attachedView.compareAndSet(null, new))
             throw IllegalStateException("A view is already attached")
         view.setRenderer(ScapesEngineRenderer(this))
+        new.second.enable()
+        events?.fire(CaptureCursorEvent(cursorCaptured))
     }
 
     fun detachView(view: ScapesEngineView) {
-        if (attachedView.getAndSet(null) != view)
+        val old = attachedView.getAndSet(null)
+        if (old?.first != view)
             throw IllegalStateException("No or a different view is attached")
+        old.second.disable()
         view.engine.graphics.reset()
     }
 
@@ -99,18 +103,12 @@ class AndroidContainer(
         reset.set(true)
     }
 
-    override fun updateContainer() {}
-
-    override fun update(delta: Double) {}
-
     override fun allocateNative(size: Int): ByteViewE =
         ByteBufferNative(size).viewE
 
-    override fun clipboardCopy(value: String) {
-    }
-
-    override fun clipboardPaste(): String {
-        return ""
+    fun cursorCapture(value: Boolean) {
+        cursorCaptured = value
+        events?.fire(CaptureCursorEvent(value))
     }
 
     override fun message(
@@ -118,15 +116,7 @@ class AndroidContainer(
         title: String,
         message: String
     ) {
-        val view = view ?: return
-        handler.post {
-            val context = view.context
-            AlertDialog.Builder(context).setTitle(title).setMessage(
-                message
-            ).setPositiveButton(
-                "OK"
-            ) { _, _ -> }.create().show()
-        }
+        events?.fire(MessageEvent(messageType, title, message))
     }
 
     override fun dialog(
@@ -134,33 +124,31 @@ class AndroidContainer(
         text: GuiController.TextFieldData,
         multiline: Boolean
     ) {
-        val view = view ?: return
-        handler.post {
-            val context = view.context
-            val editText = EditText(context)
-            editText.setText(text.text.toString())
-            val dialog = AlertDialog.Builder(context).setTitle(
-                title
-            ).setView(
-                editText
-            ).setPositiveButton("Done") { _, _ ->
-                if (text.text.isNotEmpty()) {
-                    text.text.clear()
-                }
-                text.text.append(editText.text)
-                text.cursor = text.text.length
-                text.dirty.set(true)
-            }.create()
-            dialog.show()
-            editText.requestFocus()
-            val imm = editText.context.getSystemService(
-                Context.INPUT_METHOD_SERVICE
-            ) as InputMethodManager
-            imm.showSoftInput(editText, InputMethodManager.SHOW_FORCED)
-        }
+        events?.fire(DialogEvent(title, text, multiline))
     }
 
     override fun isRenderCall() = Thread.currentThread() === renderThread
 
     override fun stop() = stop.invoke()
+
+    // Old
+
+    override fun updateContainer() {}
+
+    private var mouseGrabbed = false
+
+    override fun update(delta: Double) {
+        val mouseGrabbed = view?.engine?.isMouseGrabbed() == true
+        if (mouseGrabbed != this.mouseGrabbed) {
+            this.mouseGrabbed = mouseGrabbed
+            cursorCapture(mouseGrabbed)
+        }
+    }
+
+    override fun clipboardCopy(value: String) {
+    }
+
+    override fun clipboardPaste(): String {
+        return ""
+    }
 }

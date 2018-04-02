@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2017 Tobi29
+ * Copyright 2012-2018 Tobi29
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,8 +23,10 @@ import android.graphics.Typeface
 import org.tobi29.scapes.engine.gui.GlyphRenderer
 import kotlin.math.roundToInt
 
-class AndroidGlyphRenderer(private val typeface: Typeface,
-                           size: Int) : GlyphRenderer {
+internal class AndroidGlyphRenderer(
+    private val typeface: Typeface,
+    size: Int
+) : GlyphRenderer {
     private val size = size.toDouble()
     private val tiles: Int
     private val pageTiles: Int
@@ -37,16 +39,12 @@ class AndroidGlyphRenderer(private val typeface: Typeface,
     private val tileSize: Double
 
     init {
-        val tileBits = if (size < 16) {
-            4
-        } else if (size < 32) {
-            3
-        } else if (size < 64) {
-            2
-        } else if (size < 128) {
-            1
-        } else {
-            0
+        val tileBits = when {
+            size < 16 -> 4
+            size < 32 -> 3
+            size < 64 -> 2
+            size < 128 -> 1
+            else -> 0
         }
         tiles = 1 shl tileBits
         pageTileBits = tileBits shl 1
@@ -76,8 +74,10 @@ class AndroidGlyphRenderer(private val typeface: Typeface,
     }
 
     override suspend fun page(id: Int): ByteArray {
-        val bitmap = Bitmap.createBitmap(imageSize, imageSize,
-                Bitmap.Config.ARGB_8888)
+        val bitmap = Bitmap.createBitmap(
+            imageSize, imageSize,
+            Bitmap.Config.ARGB_8888
+        )
         bitmap.density = 96
         val canvas = Canvas(bitmap)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -110,11 +110,7 @@ class AndroidGlyphRenderer(private val typeface: Typeface,
         return buffer
     }
 
-    override fun pageID(character: Char): Int {
-        return character.toInt() shr pageTileBits
-    }
+    override fun pageID(character: Char) = character.toInt() shr pageTileBits
 
-    override fun pageCode(character: Char): Int {
-        return character.toInt() and pageTileMask
-    }
+    override fun pageCode(character: Char) = character.toInt() and pageTileMask
 }

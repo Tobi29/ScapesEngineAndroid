@@ -1,0 +1,3 @@
+-dontwarn org.tobi29.scapes.engine.android.ScapesEngineView$events$1$2$1
+-dontwarn org.tobi29.scapes.engine.android.ScapesEngineView$events$1$2
+-dontwarn org.tobi29.scapes.engine.android.ScapesEngineView$events$1$2$1

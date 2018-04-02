@@ -16,7 +16,9 @@
 
 package org.tobi29.scapes.engine.android
 
+import android.app.AlertDialog
 import android.content.Context
+import android.graphics.Rect
 import android.hardware.input.InputManager
 import android.opengl.GLSurfaceView
 import android.util.AttributeSet
@@ -24,11 +26,15 @@ import android.util.SparseArray
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
+import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
 import org.tobi29.logging.KLogging
+import org.tobi29.scapes.engine.Container
 import org.tobi29.scapes.engine.ScapesEngine
 import org.tobi29.scapes.engine.android.input.AndroidControllerDesktop
 import org.tobi29.scapes.engine.android.input.AndroidControllerJoystick
 import org.tobi29.scapes.engine.android.input.AndroidControllerTouch
+import org.tobi29.scapes.engine.gui.GuiController
 import org.tobi29.scapes.engine.input.Controller
 import org.tobi29.scapes.engine.input.ControllerButtons
 import org.tobi29.scapes.engine.input.ControllerJoystick
@@ -51,6 +57,51 @@ class ScapesEngineView(
     private val touchController = AndroidControllerTouch()
     private val defaultController = AndroidControllerDesktop()
     private var defaultDevices = 0
+    private var cursorCaptured = false
+    private val events = EventDispatcher(engine.events) {
+        listen<CaptureCursorEvent> { event ->
+            post {
+                if (android.os.Build.VERSION.SDK_INT >= 26) {
+                    cursorCaptured = event.value
+                    if (cursorCaptured) requestPointerCapture()
+                    else releasePointerCapture()
+                }
+            }
+        }
+        listen<MessageEvent> { event ->
+            post {
+                AlertDialog.Builder(context)
+                    .setTitle(event.title)
+                    .setMessage(event.message)
+                    .setPositiveButton("OK") { _, _ -> }
+                    .create().show()
+            }
+        }
+        listen<DialogEvent> { event ->
+            post {
+                val editText = EditText(context)
+                editText.setText(event.text.text.toString())
+                val dialog = AlertDialog.Builder(context)
+                    .setTitle(event.title)
+                    .setView(editText)
+                    .setPositiveButton("Done") { _, _ ->
+                        if (event.text.text.isNotEmpty()) {
+                            event.text.text.clear()
+                        }
+                        event.text.text.append(editText.text)
+                        event.text.cursor = event.text.text.length
+                        event.text.dirty.set(true)
+                    }
+                    .create()
+                dialog.show()
+                editText.requestFocus()
+                val imm = editText.context.getSystemService(
+                    Context.INPUT_METHOD_SERVICE
+                ) as InputMethodManager
+                imm.showSoftInput(editText, InputMethodManager.SHOW_FORCED)
+            }
+        }
+    }
     private val deviceListener = object : InputManager.InputDeviceListener {
         override fun onInputDeviceRemoved(deviceId: Int) {
             val controller = devices.get(deviceId) ?: return
@@ -59,23 +110,25 @@ class ScapesEngineView(
                 defaultDevices--
                 assert(defaultDevices >= 0)
                 if (defaultDevices == 0) {
-                    engine.events.fire(Controller.RemoveEvent(controller))
+                    events.fire(Controller.RemoveEvent(controller))
                 }
             }
         }
 
         override fun onInputDeviceAdded(deviceId: Int) {
             val device = inputManager.getInputDevice(deviceId)
-            if(device.isVirtual) return
+            if (device.isVirtual) return
             if (device.isFullKeyboard
-                || device.isType(InputDevice.SOURCE_MOUSE)) {
+                || device.isType(InputDevice.SOURCE_MOUSE)
+                || device.isType(InputDevice.SOURCE_MOUSE_RELATIVE)) {
                 if (device.isFullKeyboard)
                     logger.info { "Detected keyboard: ${device.name}" }
-                if (device.isType(InputDevice.SOURCE_MOUSE))
+                if (device.isType(InputDevice.SOURCE_MOUSE)
+                    || device.isType(InputDevice.SOURCE_MOUSE_RELATIVE))
                     logger.info { "Detected mouse: ${device.name}" }
 
                 if (defaultDevices == 0)
-                    engine.events.fire(Controller.AddEvent(defaultController))
+                    events.fire(Controller.AddEvent(defaultController))
                 defaultDevices++
                 devices.put(deviceId, defaultController)
             }
@@ -89,7 +142,7 @@ class ScapesEngineView(
                     ControllerJoystick.Type.GAMEPAD,
                     device.motionRanges.size
                 )
-                engine.events.fire(Controller.AddEvent(controller))
+                events.fire(Controller.AddEvent(controller))
                 devices.put(deviceId, controller)
             }
         }
@@ -104,11 +157,12 @@ class ScapesEngineView(
         isFocusable = true
         isFocusableInTouchMode = true
         setEGLContextClientVersion(3)
-        inputManager.registerInputDeviceListener(deviceListener, handler)
+        events.enable()
+        inputManager.registerInputDeviceListener(deviceListener, null)
         inputManager.inputDeviceIds.forEach {
             deviceListener.onInputDeviceAdded(it)
         }
-        engine.events.fire(Controller.AddEvent(touchController))
+        events.fire(Controller.AddEvent(touchController))
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -122,8 +176,7 @@ class ScapesEngineView(
                 is AndroidControllerDesktop -> {
                     if (device.isType(InputDevice.SOURCE_MOUSE)) {
                         handleMousePointer(
-                            event, densityX, densityY,
-                            controller, engine.events
+                            event, densityX, densityY, controller, events
                         )
                     }
                 }
@@ -135,7 +188,7 @@ class ScapesEngineView(
     override fun onGenericMotionEvent(event: MotionEvent): Boolean {
         super.onGenericMotionEvent(event)
         val controller = devices[event.deviceId]
-        val device = event.device ?: return true
+        val device = event.device ?: return false
         when (controller) {
             is AndroidControllerJoystick -> {
                 device.motionRanges.withIndex().forEach { (i, motionRange) ->
@@ -144,7 +197,7 @@ class ScapesEngineView(
                         deadzones(
                             event.getAxisValue(motionRange.axis).toDouble()
                         ),
-                        engine.events
+                        events
                     )
                 }
             }
@@ -155,7 +208,7 @@ class ScapesEngineView(
                             AndroidKeyMap.button(event.actionButton)?.let {
                                 controller.addPressEvent(
                                     it, ControllerButtons.Action.PRESS,
-                                    engine.events
+                                    events
                                 )
                             }
                         }
@@ -163,13 +216,51 @@ class ScapesEngineView(
                             AndroidKeyMap.button(event.actionButton)?.let {
                                 controller.addPressEvent(
                                     it, ControllerButtons.Action.RELEASE,
-                                    engine.events
+                                    events
                                 )
                             }
                         }
                     }
                     handleMousePointer(
-                        event, densityX, densityY, controller, engine.events
+                        event, densityX, densityY, controller, events
+                    )
+                } else if (device.isType(InputDevice.SOURCE_MOUSE_RELATIVE)) {
+                    handleMouseScroll(
+                        event, densityX, densityY, controller, events
+                    )
+                }
+            }
+        }
+        return true
+    }
+
+    override fun onCapturedPointerEvent(event: MotionEvent): Boolean {
+        super.onCapturedPointerEvent(event)
+        val controller = devices[event.deviceId]
+        val device = event.device ?: return false
+        when (controller) {
+            is AndroidControllerDesktop -> {
+                if (device.isType(InputDevice.SOURCE_MOUSE_RELATIVE)) {
+                    when (event.action) {
+                        MotionEvent.ACTION_BUTTON_PRESS -> {
+                            AndroidKeyMap.button(event.actionButton)?.let {
+                                controller.addPressEvent(
+                                    it, ControllerButtons.Action.PRESS,
+                                    events
+                                )
+                            }
+                        }
+                        MotionEvent.ACTION_BUTTON_RELEASE -> {
+                            AndroidKeyMap.button(event.actionButton)?.let {
+                                controller.addPressEvent(
+                                    it, ControllerButtons.Action.RELEASE,
+                                    events
+                                )
+                            }
+                        }
+                    }
+                    handleMousePointerRelative(
+                        event, densityX, densityY, controller, events
                     )
                 }
             }
@@ -186,10 +277,10 @@ class ScapesEngineView(
             val controller = devices[event.deviceId]
             when (controller) {
                 is AndroidControllerDesktop -> controller.addPressEvent(
-                    key, ControllerButtons.Action.PRESS, engine.events
+                    key, ControllerButtons.Action.PRESS, events
                 )
                 is AndroidControllerJoystick -> controller.addPressEvent(
-                    key, ControllerButtons.Action.PRESS, engine.events
+                    key, ControllerButtons.Action.PRESS, events
                 )
             }
         }
@@ -205,10 +296,10 @@ class ScapesEngineView(
             val controller = devices[event.deviceId]
             when (controller) {
                 is AndroidControllerDesktop -> controller.addPressEvent(
-                    key, ControllerButtons.Action.RELEASE, engine.events
+                    key, ControllerButtons.Action.RELEASE, events
                 )
                 is AndroidControllerJoystick -> controller.addPressEvent(
-                    key, ControllerButtons.Action.RELEASE, engine.events
+                    key, ControllerButtons.Action.RELEASE, events
                 )
             }
         }
@@ -229,56 +320,130 @@ class ScapesEngineView(
         densityY = 1.0
     }
 
+    override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
+        super.onWindowFocusChanged(hasWindowFocus)
+        if (android.os.Build.VERSION.SDK_INT >= 26 && hasWindowFocus) {
+            if (cursorCaptured) requestPointerCapture()
+            else releasePointerCapture()
+        }
+    }
+
+    override fun onFocusChanged(
+        gainFocus: Boolean,
+        direction: Int,
+        previouslyFocusedRect: Rect?
+    ) {
+        super.onFocusChanged(gainFocus, direction, previouslyFocusedRect)
+        if (android.os.Build.VERSION.SDK_INT >= 26 && gainFocus) {
+            if (cursorCaptured) requestPointerCapture()
+            else releasePointerCapture()
+        }
+    }
+
     fun dispose() {
         inputManager.unregisterInputDeviceListener(deviceListener)
+        events.disable()
     }
 
-    companion object : KLogging() {
-        private val DEADZONES = 0.05
-        private val DEADZONES_SCALE = 0.95
+    companion object : KLogging()
+}
 
-        private fun deadzones(value: Double): Double {
-            if (value > DEADZONES) {
-                return (value - DEADZONES) / DEADZONES_SCALE
-            } else if (value < -DEADZONES) {
-                return (value + DEADZONES) / DEADZONES_SCALE
-            }
-            return 0.0
-        }
+class CaptureCursorEvent(
+    val value: Boolean
+)
 
-        private fun handleMousePointer(
-            event: MotionEvent,
-            densityX: Double,
-            densityY: Double,
-            controller: AndroidControllerDesktop,
-            events: EventDispatcher
-        ) {
-            handleMousePointer(event, { x, y ->
-                controller.set(x / densityX, y / densityY)
-            }, { x, y ->
-                controller.addDelta(x / densityX, y / densityY, events)
-            })
-        }
+class MessageEvent(
+    val messageType: Container.MessageType,
+    val title: String,
+    val message: String
+)
 
-        private inline fun handleMousePointer(
-            event: MotionEvent,
-            absolute: (Double, Double) -> Unit,
-            relative: (Double, Double) -> Unit
-        ) {
-            var ox = event.x
-            var oy = event.y
-            absolute(ox.toDouble(), oy.toDouble())
-            var dx = 0.0f
-            var dy = 0.0f
-            for (i in 0 until event.historySize) {
-                val hx = event.getHistoricalX(i)
-                val hy = event.getHistoricalY(i)
-                dx += ox - hx
-                dy += oy - hy
-                ox = hx
-                oy = hy
-            }
-            relative(dx.toDouble(), dy.toDouble())
-        }
+class DialogEvent(
+    val title: String,
+    val text: GuiController.TextFieldData,
+    val multiline: Boolean
+)
+
+private const val DEADZONES = 0.05
+private const val DEADZONES_SCALE = 0.95
+
+private fun deadzones(value: Double): Double {
+    if (value > DEADZONES) {
+        return (value - DEADZONES) / DEADZONES_SCALE
+    } else if (value < -DEADZONES) {
+        return (value + DEADZONES) / DEADZONES_SCALE
     }
+    return 0.0
+}
+
+private fun handleMousePointer(
+    event: MotionEvent,
+    densityX: Double,
+    densityY: Double,
+    controller: AndroidControllerDesktop,
+    events: EventDispatcher
+) {
+    handleMousePointer(event, { x, y ->
+        controller.set(x / densityX, y / densityY)
+    }, { x, y ->
+        controller.addDelta(x / densityX, y / densityY, events)
+    })
+}
+
+private inline fun handleMousePointer(
+    event: MotionEvent,
+    absolute: (Double, Double) -> Unit,
+    relative: (Double, Double) -> Unit
+) {
+    var ox = event.x
+    var oy = event.y
+    absolute(ox.toDouble(), oy.toDouble())
+    var dx = 0.0f
+    var dy = 0.0f
+    for (i in 0 until event.historySize) {
+        val hx = event.getHistoricalX(i)
+        val hy = event.getHistoricalY(i)
+        dx += ox - hx
+        dy += oy - hy
+        ox = hx
+        oy = hy
+    }
+    relative(dx.toDouble(), dy.toDouble())
+}
+
+private fun handleMousePointerRelative(
+    event: MotionEvent,
+    densityX: Double,
+    densityY: Double,
+    controller: AndroidControllerDesktop,
+    events: EventDispatcher
+) {
+    handleMouseRelative(event, { x, y ->
+        controller.addDelta(x / densityX, y / densityY, events)
+    })
+}
+
+private fun handleMouseScroll(
+    event: MotionEvent,
+    densityX: Double,
+    densityY: Double,
+    controller: AndroidControllerDesktop,
+    events: EventDispatcher
+) {
+    handleMouseRelative(event, { x, y ->
+        controller.addScroll(x / densityX, y / densityY, 0, events)
+    })
+}
+
+private inline fun handleMouseRelative(
+    event: MotionEvent,
+    relative: (Double, Double) -> Unit
+) {
+    var dx = 0.0f
+    var dy = 0.0f
+    for (i in 0 until event.historySize) {
+        dx += event.getHistoricalX(i)
+        dy += event.getHistoricalY(i)
+    }
+    relative(dx.toDouble(), dy.toDouble())
 }
