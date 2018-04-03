@@ -20,87 +20,55 @@ import org.tobi29.io.ByteBufferNative
 import org.tobi29.io.ByteViewE
 import org.tobi29.io.viewE
 import org.tobi29.scapes.engine.Container
+import org.tobi29.scapes.engine.ScapesEngine
 import org.tobi29.scapes.engine.ScapesEngineBackend
 import org.tobi29.scapes.engine.backends.opengles.GLESHandle
 import org.tobi29.scapes.engine.backends.opengles.GLESImpl
 import org.tobi29.scapes.engine.gui.GuiController
-import org.tobi29.stdex.atomic.AtomicBoolean
+import org.tobi29.stdex.Volatile
 import org.tobi29.stdex.atomic.AtomicReference
 import org.tobi29.utils.EventDispatcher
-import org.tobi29.utils.sleep
 
 class AndroidContainer(
     backend: ScapesEngineBackend,
     private val stop: () -> Unit
 ) : Container, ScapesEngineBackend by backend {
-    val view get() = attachedView.get()?.first
-    val events get() = attachedView.get()?.second
+    val engine get() = attached.get()?.first
+    val view get() = attached.get()?.second
+    val events get() = attached.get()?.third
     private val glh = GLESHandle(this)
     override val gos get() = glh
     override val formFactor = Container.FormFactor.PHONE
     override val containerWidth get() = view?.containerWidth ?: 1
     override val containerHeight get() = view?.containerHeight ?: 1
-    private val gl = GLESImpl(gos)
-    private val attachedView =
-        AtomicReference<Pair<ScapesEngineView, EventDispatcher>?>()
-    private var renderThread = AtomicReference<Thread?>(null)
-    @kotlin.jvm.Volatile
+    internal val gl = GLESImpl(gos)
+    private val attached =
+        AtomicReference<Triple<ScapesEngine, ScapesEngineView, EventDispatcher>?>()
+    @Volatile
     private var cursorCaptured = false
-    private val reset = AtomicBoolean(false)
 
     init {
         AndroidKeyMap.touch()
     }
 
-    fun render(
-        delta: Double,
-        view: ScapesEngineView,
-        width: Int,
-        height: Int
-    ) {
-        val currentView = attachedView.get()?.first
-                ?: throw IllegalStateException("No view attached")
-        if (view != currentView) {
-            throw IllegalStateException("Different view attached")
-        }
-        val currentThread = Thread.currentThread()
-        if (!renderThread.compareAndSet(null, currentThread)) {
-            throw IllegalStateException("Rendering twice at the same time")
-        }
-        if (reset.getAndSet(false)) view.engine.graphics.reset()
-        try {
-            while (!view.engine.graphics.render(
-                    gl, delta, width, height,
-                    containerWidth, containerHeight
-                )) {
-                sleep(1L)
-            }
-        } finally {
-            if (!renderThread.compareAndSet(currentThread, null)) {
-                throw IllegalStateException("Rendering twice at the same time")
-            }
-        }
-    }
-
-    fun attachView(view: ScapesEngineView) {
-        val new = view to EventDispatcher(view.engine.events) {}
-        if (!attachedView.compareAndSet(null, new))
+    fun attach(engine: ScapesEngine, view: ScapesEngineView) {
+        val new = Triple(engine, view, EventDispatcher(engine.events) {})
+        if (!attached.compareAndSet(null, new))
             throw IllegalStateException("A view is already attached")
-        view.setRenderer(ScapesEngineRenderer(this))
-        new.second.enable()
+
+        new.third.enable()
+        view.attach(engine, this)
         events?.fire(CaptureCursorEvent(cursorCaptured))
     }
 
-    fun detachView(view: ScapesEngineView) {
-        val old = attachedView.getAndSet(null)
-        if (old?.first != view)
+    fun detach(engine: ScapesEngine, view: ScapesEngineView) {
+        val old = attached.getAndSet(null)
+        if (old?.first !== engine || old.second !== view)
             throw IllegalStateException("No or a different view is attached")
-        old.second.disable()
-        view.engine.graphics.reset()
-    }
 
-    fun resetGL() {
-        reset.set(true)
+        view.detach(engine, this)
+        old.third.disable()
+        engine.graphics.reset()
     }
 
     override fun allocateNative(size: Int): ByteViewE =
@@ -127,7 +95,7 @@ class AndroidContainer(
         events?.fire(DialogEvent(title, text, multiline))
     }
 
-    override fun isRenderCall() = Thread.currentThread() === renderThread
+    override fun isRenderCall() = view?.isRenderCall() == true
 
     override fun stop() = stop.invoke()
 }

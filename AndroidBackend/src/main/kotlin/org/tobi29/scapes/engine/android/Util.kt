@@ -17,6 +17,7 @@
 package org.tobi29.scapes.engine.android
 
 import android.annotation.TargetApi
+import android.app.Fragment
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.ContentResolver
@@ -35,9 +36,13 @@ import org.tobi29.io.use
 import org.tobi29.stdex.ThreadLocal
 import java.nio.channels.Channels
 
-val Context.filesPath get() = path(filesDir.toString())
+inline val Context.filesPath get() = path(filesDir)
 
-val Context.cachePath get() = path(cacheDir.toString())
+inline val Context.cachePath get() = path(cacheDir)
+
+inline val Fragment._context
+    get() = if (android.os.Build.VERSION.SDK_INT >= 23) context
+    else activity
 
 fun openFileIntent(
     types: Array<String>?,

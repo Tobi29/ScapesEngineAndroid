@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2017 Tobi29
+ * Copyright 2012-2018 Tobi29
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,17 @@
  * limitations under the License.
  */
 
+@file:Suppress("NOTHING_TO_INLINE")
+
 package org.tobi29.scapes.engine.android.input
 
+import android.view.MotionEvent
 import org.tobi29.math.vector.Vector2d
+import org.tobi29.scapes.engine.android.AndroidKeyMap
 import org.tobi29.scapes.engine.input.*
 import org.tobi29.stdex.ConcurrentHashSet
 import org.tobi29.stdex.atomic.AtomicLong
+import org.tobi29.stdex.maskAny
 import org.tobi29.stdex.readOnly
 import org.tobi29.utils.EventDispatcher
 import org.tobi29.utils.steadyClock
@@ -31,6 +36,7 @@ internal class AndroidControllerDesktop : ControllerDesktop() {
         private set
     override var y = 0.0
         private set
+    private var buttonState = 0
     private val lastActiveMut = AtomicLong(Long.MIN_VALUE)
     override val lastActive
         get() = lastActiveMut.get().coerceAtLeast(Long.MIN_VALUE + 1L) - 1L
@@ -56,6 +62,31 @@ internal class AndroidControllerDesktop : ControllerDesktop() {
                 ControllerButtons.Action.RELEASE -> pressedMut.remove(key)
             }
             events.fire(ControllerButtons.PressEvent(now(), key, action))
+        }
+    }
+
+    internal fun addButtonState(
+        state: Int,
+        events: EventDispatcher
+    ) {
+        lastActiveMut.set(steadyClock.timeSteadyNanos())
+        if (android.os.Build.VERSION.SDK_INT >= 14) {
+            MotionEvent.BUTTON_PRIMARY
+                .checkButtonState(state, buttonState, events)
+            MotionEvent.BUTTON_SECONDARY
+                .checkButtonState(state, buttonState, events)
+            MotionEvent.BUTTON_TERTIARY
+                .checkButtonState(state, buttonState, events)
+            MotionEvent.BUTTON_FORWARD
+                .checkButtonState(state, buttonState, events)
+            MotionEvent.BUTTON_BACK
+                .checkButtonState(state, buttonState, events)
+        }
+        if (android.os.Build.VERSION.SDK_INT >= 23) {
+            MotionEvent.BUTTON_STYLUS_PRIMARY
+                .checkButtonState(state, buttonState, events)
+            MotionEvent.BUTTON_STYLUS_SECONDARY
+                .checkButtonState(state, buttonState, events)
         }
     }
 
@@ -108,4 +139,25 @@ internal class AndroidControllerDesktop : ControllerDesktop() {
         }
         events.fire(ControllerMouse.ScrollEvent(now(), delta))
     }
+
+    private fun Int.checkButtonState(
+        from: Int,
+        to: Int,
+        events: EventDispatcher
+    ) {
+        if (gotPressed(from, to))
+            AndroidKeyMap.button(this)?.let {
+                addPressEvent(it, ControllerButtons.Action.PRESS, events)
+            }
+        else if (gotReleased(from, to))
+            AndroidKeyMap.button(this)?.let {
+                addPressEvent(it, ControllerButtons.Action.RELEASE, events)
+            }
+    }
 }
+
+private inline fun Int.gotPressed(from: Int, to: Int) =
+    !maskAny(from) && maskAny(to)
+
+private inline fun Int.gotReleased(from: Int, to: Int) =
+    maskAny(from) && !maskAny(to)

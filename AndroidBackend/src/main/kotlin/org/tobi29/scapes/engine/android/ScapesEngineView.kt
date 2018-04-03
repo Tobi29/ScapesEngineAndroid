@@ -28,6 +28,7 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
+import org.tobi29.coroutines.Timer
 import org.tobi29.logging.KLogging
 import org.tobi29.scapes.engine.Container
 import org.tobi29.scapes.engine.ScapesEngine
@@ -38,12 +39,16 @@ import org.tobi29.scapes.engine.gui.GuiController
 import org.tobi29.scapes.engine.input.Controller
 import org.tobi29.scapes.engine.input.ControllerButtons
 import org.tobi29.scapes.engine.input.ControllerJoystick
+import org.tobi29.stdex.atomic.AtomicBoolean
+import org.tobi29.stdex.atomic.AtomicReference
 import org.tobi29.stdex.math.floorToInt
 import org.tobi29.utils.EventDispatcher
+import org.tobi29.utils.sleep
+import javax.microedition.khronos.egl.EGLConfig
+import javax.microedition.khronos.opengles.GL10
 
 class ScapesEngineView(
     context: Context,
-    val engine: ScapesEngine,
     attrs: AttributeSet? = null
 ) : GLSurfaceView(context, attrs) {
     val containerWidth get() = (width / densityX).floorToInt()
@@ -58,50 +63,13 @@ class ScapesEngineView(
     private val defaultController = AndroidControllerDesktop()
     private var defaultDevices = 0
     private var cursorCaptured = false
-    private val events = EventDispatcher(engine.events) {
-        listen<CaptureCursorEvent> { event ->
-            post {
-                if (android.os.Build.VERSION.SDK_INT >= 26) {
-                    cursorCaptured = event.value
-                    if (cursorCaptured) requestPointerCapture()
-                    else releasePointerCapture()
-                }
-            }
-        }
-        listen<MessageEvent> { event ->
-            post {
-                AlertDialog.Builder(context)
-                    .setTitle(event.title)
-                    .setMessage(event.message)
-                    .setPositiveButton("OK") { _, _ -> }
-                    .create().show()
-            }
-        }
-        listen<DialogEvent> { event ->
-            post {
-                val editText = EditText(context)
-                editText.setText(event.text.text.toString())
-                val dialog = AlertDialog.Builder(context)
-                    .setTitle(event.title)
-                    .setView(editText)
-                    .setPositiveButton("Done") { _, _ ->
-                        if (event.text.text.isNotEmpty()) {
-                            event.text.text.clear()
-                        }
-                        event.text.text.append(editText.text)
-                        event.text.cursor = event.text.text.length
-                        event.text.dirty.set(true)
-                    }
-                    .create()
-                dialog.show()
-                editText.requestFocus()
-                val imm = editText.context.getSystemService(
-                    Context.INPUT_METHOD_SERVICE
-                ) as InputMethodManager
-                imm.showSoftInput(editText, InputMethodManager.SHOW_FORCED)
-            }
-        }
-    }
+    private val engine get() = attached.get()?.first
+    private val container get() = attached.get()?.second
+    private val events get() = attached.get()?.third
+    private val attached =
+        AtomicReference<Triple<ScapesEngine, AndroidContainer, EventDispatcher>?>()
+    private val renderThread = AtomicReference<Thread?>(null)
+    private val reset = AtomicBoolean(false)
     private val deviceListener = object : InputManager.InputDeviceListener {
         override fun onInputDeviceRemoved(deviceId: Int) {
             val controller = devices.get(deviceId) ?: return
@@ -110,7 +78,7 @@ class ScapesEngineView(
                 defaultDevices--
                 assert(defaultDevices >= 0)
                 if (defaultDevices == 0) {
-                    events.fire(Controller.RemoveEvent(controller))
+                    events?.fire(Controller.RemoveEvent(controller))
                 }
             }
         }
@@ -128,7 +96,7 @@ class ScapesEngineView(
                     logger.info { "Detected mouse: ${device.name}" }
 
                 if (defaultDevices == 0)
-                    events.fire(Controller.AddEvent(defaultController))
+                    events?.fire(Controller.AddEvent(defaultController))
                 defaultDevices++
                 devices.put(deviceId, defaultController)
             }
@@ -142,7 +110,7 @@ class ScapesEngineView(
                     ControllerJoystick.Type.GAMEPAD,
                     device.motionRanges.size
                 )
-                events.fire(Controller.AddEvent(controller))
+                events?.fire(Controller.AddEvent(controller))
                 devices.put(deviceId, controller)
             }
         }
@@ -157,16 +125,131 @@ class ScapesEngineView(
         isFocusable = true
         isFocusableInTouchMode = true
         setEGLContextClientVersion(3)
-        events.enable()
+        setRenderer(object : Renderer {
+            private val timer = Timer()
+            private var widthResolution = 0
+            private var heightResolution = 0
+
+            override fun onSurfaceCreated(
+                gl: GL10,
+                config: EGLConfig
+            ) {
+                resetGL()
+                timer.init()
+            }
+
+            override fun onSurfaceChanged(
+                gl: GL10,
+                width: Int,
+                height: Int
+            ) {
+                widthResolution = width
+                heightResolution = height
+            }
+
+            override fun onDrawFrame(gl: GL10) {
+                val tickDiff = timer.tick()
+                val delta = Timer.toDelta(tickDiff).coerceIn(0.0001, 0.1)
+                render(delta, widthResolution, heightResolution)
+            }
+        })
+    }
+
+    fun attach(engine: ScapesEngine, container: AndroidContainer) {
+        val new = Triple(engine, container, EventDispatcher(engine.events) {
+            listen<CaptureCursorEvent> { event ->
+                post {
+                    if (android.os.Build.VERSION.SDK_INT >= 26) {
+                        cursorCaptured = event.value
+                        if (cursorCaptured) requestPointerCapture()
+                        else releasePointerCapture()
+                    }
+                }
+            }
+            listen<MessageEvent> { event ->
+                post {
+                    AlertDialog.Builder(context)
+                        .setTitle(event.title)
+                        .setMessage(event.message)
+                        .setPositiveButton("OK") { _, _ -> }
+                        .create().show()
+                }
+            }
+            listen<DialogEvent> { event ->
+                post {
+                    val editText = EditText(context)
+                    editText.setText(event.text.text.toString())
+                    val dialog = AlertDialog.Builder(context)
+                        .setTitle(event.title)
+                        .setView(editText)
+                        .setPositiveButton("Done") { _, _ ->
+                            if (event.text.text.isNotEmpty()) {
+                                event.text.text.clear()
+                            }
+                            event.text.text.append(editText.text)
+                            event.text.cursor = event.text.text.length
+                            event.text.dirty.set(true)
+                        }
+                        .create()
+                    dialog.show()
+                    editText.requestFocus()
+                    val imm = editText.context.getSystemService(
+                        Context.INPUT_METHOD_SERVICE
+                    ) as InputMethodManager
+                    imm.showSoftInput(editText, InputMethodManager.SHOW_FORCED)
+                }
+            }
+        })
+        if (!attached.compareAndSet(null, new))
+            throw IllegalStateException("An engine is already attached")
+
+        new.third.enable()
         inputManager.registerInputDeviceListener(deviceListener, null)
         inputManager.inputDeviceIds.forEach {
             deviceListener.onInputDeviceAdded(it)
         }
-        events.fire(Controller.AddEvent(touchController))
+        new.third.fire(Controller.AddEvent(touchController))
+    }
+
+    fun detach(engine: ScapesEngine, container: AndroidContainer) {
+        val old = attached.getAndSet(null)
+        if (old?.first !== engine || old.second !== container)
+            throw IllegalStateException("No or a different engine is attached")
+
+        inputManager.inputDeviceIds.forEach {
+            deviceListener.onInputDeviceRemoved(it)
+        }
+        inputManager.unregisterInputDeviceListener(deviceListener)
+        old.third.disable()
+    }
+
+    private fun render(
+        delta: Double,
+        width: Int,
+        height: Int
+    ) {
+        val currentThread = Thread.currentThread()
+        if (!renderThread.compareAndSet(null, currentThread))
+            error("Rendering twice at the same time")
+        val engine = engine ?: return
+        val container = container ?: return
+        if (reset.getAndSet(false)) engine.graphics.reset()
+        try {
+            while (!engine.graphics.render(
+                    container.gl, delta, width, height,
+                    containerWidth, containerHeight
+                )) {
+                sleep(1L)
+            }
+        } finally {
+            if (!renderThread.compareAndSet(currentThread, null))
+                error("Rendering twice at the same time")
+        }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         super.onTouchEvent(event)
+        val events = events ?: return false
         val device = event.device ?: return true
         if (device.isType(InputDevice.SOURCE_TOUCHSCREEN)) {
             touchController.handle(event, densityX, densityY)
@@ -187,6 +270,7 @@ class ScapesEngineView(
 
     override fun onGenericMotionEvent(event: MotionEvent): Boolean {
         super.onGenericMotionEvent(event)
+        val events = events ?: return false
         val controller = devices[event.deviceId]
         val device = event.device ?: return false
         when (controller) {
@@ -203,24 +287,7 @@ class ScapesEngineView(
             }
             is AndroidControllerDesktop -> {
                 if (device.isType(InputDevice.SOURCE_MOUSE)) {
-                    when (event.action) {
-                        MotionEvent.ACTION_BUTTON_PRESS -> {
-                            AndroidKeyMap.button(event.actionButton)?.let {
-                                controller.addPressEvent(
-                                    it, ControllerButtons.Action.PRESS,
-                                    events
-                                )
-                            }
-                        }
-                        MotionEvent.ACTION_BUTTON_RELEASE -> {
-                            AndroidKeyMap.button(event.actionButton)?.let {
-                                controller.addPressEvent(
-                                    it, ControllerButtons.Action.RELEASE,
-                                    events
-                                )
-                            }
-                        }
-                    }
+                    handleActionButton(event, events, controller)
                     handleMousePointer(
                         event, densityX, densityY, controller, events
                     )
@@ -236,29 +303,13 @@ class ScapesEngineView(
 
     override fun onCapturedPointerEvent(event: MotionEvent): Boolean {
         super.onCapturedPointerEvent(event)
+        val events = events ?: return false
         val controller = devices[event.deviceId]
         val device = event.device ?: return false
         when (controller) {
             is AndroidControllerDesktop -> {
                 if (device.isType(InputDevice.SOURCE_MOUSE_RELATIVE)) {
-                    when (event.action) {
-                        MotionEvent.ACTION_BUTTON_PRESS -> {
-                            AndroidKeyMap.button(event.actionButton)?.let {
-                                controller.addPressEvent(
-                                    it, ControllerButtons.Action.PRESS,
-                                    events
-                                )
-                            }
-                        }
-                        MotionEvent.ACTION_BUTTON_RELEASE -> {
-                            AndroidKeyMap.button(event.actionButton)?.let {
-                                controller.addPressEvent(
-                                    it, ControllerButtons.Action.RELEASE,
-                                    events
-                                )
-                            }
-                        }
-                    }
+                    handleActionButton(event, events, controller)
                     handleMousePointerRelative(
                         event, densityX, densityY, controller, events
                     )
@@ -268,11 +319,41 @@ class ScapesEngineView(
         return true
     }
 
+    private fun handleActionButton(
+        event: MotionEvent,
+        events: EventDispatcher,
+        controller: AndroidControllerDesktop
+    ) {
+        if (android.os.Build.VERSION.SDK_INT >= 23 && false) when (event.action) {
+            MotionEvent.ACTION_BUTTON_PRESS -> {
+                AndroidKeyMap.button(event.actionButton)?.let {
+                    controller.addPressEvent(
+                        it, ControllerButtons.Action.PRESS,
+                        events
+                    )
+                }
+            }
+            MotionEvent.ACTION_BUTTON_RELEASE -> {
+                AndroidKeyMap.button(event.actionButton)?.let {
+                    controller.addPressEvent(
+                        it, ControllerButtons.Action.RELEASE,
+                        events
+                    )
+                }
+            }
+        } else when (event.action) {
+            MotionEvent.ACTION_BUTTON_PRESS, MotionEvent.ACTION_BUTTON_RELEASE -> {
+                controller.addButtonState(event.buttonState, events)
+            }
+        }
+    }
+
     override fun onKeyDown(
         keyCode: Int,
         event: KeyEvent
     ): Boolean {
         super.onKeyDown(keyCode, event)
+        val events = events ?: return false
         AndroidKeyMap.key(keyCode)?.let { key ->
             val controller = devices[event.deviceId]
             when (controller) {
@@ -292,6 +373,7 @@ class ScapesEngineView(
         event: KeyEvent
     ): Boolean {
         super.onKeyUp(keyCode, event)
+        val events = events ?: return false
         AndroidKeyMap.key(keyCode)?.let { key ->
             val controller = devices[event.deviceId]
             when (controller) {
@@ -340,10 +422,11 @@ class ScapesEngineView(
         }
     }
 
-    fun dispose() {
-        inputManager.unregisterInputDeviceListener(deviceListener)
-        events.disable()
+    fun resetGL() {
+        reset.set(true)
     }
+
+    fun isRenderCall() = Thread.currentThread() === renderThread
 
     companion object : KLogging()
 }
