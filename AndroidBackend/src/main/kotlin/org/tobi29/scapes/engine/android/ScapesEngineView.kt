@@ -288,13 +288,16 @@ class ScapesEngineView(
             is AndroidControllerDesktop -> {
                 if (device.isType(InputDevice.SOURCE_MOUSE)) {
                     handleActionButton(event, events, controller)
-                    handleMousePointer(
-                        event, densityX, densityY, controller, events
-                    )
-                } else if (device.isType(InputDevice.SOURCE_MOUSE_RELATIVE)) {
-                    handleMouseScroll(
-                        event, densityX, densityY, controller, events
-                    )
+                    when (event.action) {
+                        MotionEvent.ACTION_MOVE ->
+                            handleMousePointer(
+                                event, densityX, densityY, controller, events
+                            )
+                        MotionEvent.ACTION_SCROLL ->
+                            handleMouseScroll(
+                                event, controller, events
+                            )
+                    }
                 }
             }
         }
@@ -310,9 +313,16 @@ class ScapesEngineView(
             is AndroidControllerDesktop -> {
                 if (device.isType(InputDevice.SOURCE_MOUSE_RELATIVE)) {
                     handleActionButton(event, events, controller)
-                    handleMousePointerRelative(
-                        event, densityX, densityY, controller, events
-                    )
+                    when (event.action) {
+                        MotionEvent.ACTION_MOVE ->
+                            handleMousePointerRelative(
+                                event, densityX, densityY, controller, events
+                            )
+                        MotionEvent.ACTION_SCROLL ->
+                            handleMouseScroll(
+                                event, controller, events
+                            )
+                    }
                 }
             }
         }
@@ -324,7 +334,7 @@ class ScapesEngineView(
         events: EventDispatcher,
         controller: AndroidControllerDesktop
     ) {
-        if (android.os.Build.VERSION.SDK_INT >= 23 && false) when (event.action) {
+        if (android.os.Build.VERSION.SDK_INT >= 23) when (event.action) {
             MotionEvent.ACTION_BUTTON_PRESS -> {
                 AndroidKeyMap.button(event.actionButton)?.let {
                     controller.addPressEvent(
@@ -501,32 +511,17 @@ private fun handleMousePointerRelative(
     controller: AndroidControllerDesktop,
     events: EventDispatcher
 ) {
-    handleMouseRelative(event, { x, y ->
-        controller.addDelta(x / densityX, y / densityY, events)
-    })
+    controller.addDelta(event.x / densityX, event.y / densityY, events)
 }
 
 private fun handleMouseScroll(
     event: MotionEvent,
-    densityX: Double,
-    densityY: Double,
     controller: AndroidControllerDesktop,
     events: EventDispatcher
 ) {
-    handleMouseRelative(event, { x, y ->
-        controller.addScroll(x / densityX, y / densityY, 0, events)
-    })
-}
-
-private inline fun handleMouseRelative(
-    event: MotionEvent,
-    relative: (Double, Double) -> Unit
-) {
-    var dx = 0.0f
-    var dy = 0.0f
-    for (i in 0 until event.historySize) {
-        dx += event.getHistoricalX(i)
-        dy += event.getHistoricalY(i)
-    }
-    relative(dx.toDouble(), dy.toDouble())
+    controller.addScroll(
+        event.getAxisValue(MotionEvent.AXIS_HSCROLL).toDouble(),
+        event.getAxisValue(MotionEvent.AXIS_VSCROLL).toDouble(),
+        1, events
+    )
 }
