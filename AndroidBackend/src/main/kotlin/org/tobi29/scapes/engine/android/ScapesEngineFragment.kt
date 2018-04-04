@@ -51,8 +51,11 @@ abstract class ScapesEngineFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val context = (
+                _context ?: error("Not attach during onCreate")
+                ).applicationContext
         val (engine, container) = ScapesEngine(
-            _context, handler, ::onCreateEngine, ::onInitEngine, ::onStopEngine
+            context, handler, ::onCreateEngine, ::onInitEngine, ::onStopEngine
         )
         this.engine = engine
         this.container = container
@@ -64,8 +67,11 @@ abstract class ScapesEngineFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
+        val context = (
+                _context ?: error("Not attach during onCreateView")
+                ).applicationContext
         view?.let { this.container.detach(engine, it) }
-        val view = ScapesEngineView(_context)
+        val view = ScapesEngineView(context)
         this.container.attach(engine, view)
         this.view = view
         return view

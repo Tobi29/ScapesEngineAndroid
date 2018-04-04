@@ -30,17 +30,18 @@ import android.view.Display
 import android.view.InputDevice
 import org.tobi29.io.BufferedReadChannelStream
 import org.tobi29.io.ReadableByteStream
+import org.tobi29.io.filesystem.FilePath
 import org.tobi29.io.filesystem.path
 import org.tobi29.io.toChannel
 import org.tobi29.io.use
 import org.tobi29.stdex.ThreadLocal
 import java.nio.channels.Channels
 
-inline val Context.filesPath get() = path(filesDir)
+inline val Context.filesPath: FilePath get() = path(filesDir)
 
-inline val Context.cachePath get() = path(cacheDir)
+inline val Context.cachePath: FilePath get() = path(cacheDir)
 
-inline val Fragment._context
+inline val Fragment._context: Context?
     get() = if (android.os.Build.VERSION.SDK_INT >= 23) context
     else activity
 
