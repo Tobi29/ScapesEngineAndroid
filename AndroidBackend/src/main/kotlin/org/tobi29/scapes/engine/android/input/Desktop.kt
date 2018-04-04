@@ -72,22 +72,23 @@ internal class AndroidControllerDesktop : ControllerDesktop() {
         lastActiveMut.set(steadyClock.timeSteadyNanos())
         if (android.os.Build.VERSION.SDK_INT >= 14) {
             MotionEvent.BUTTON_PRIMARY
-                .checkButtonState(state, buttonState, events)
+                .checkButtonState(buttonState, state, events)
             MotionEvent.BUTTON_SECONDARY
-                .checkButtonState(state, buttonState, events)
+                .checkButtonState(buttonState, state, events)
             MotionEvent.BUTTON_TERTIARY
-                .checkButtonState(state, buttonState, events)
+                .checkButtonState(buttonState, state, events)
             MotionEvent.BUTTON_FORWARD
-                .checkButtonState(state, buttonState, events)
+                .checkButtonState(buttonState, state, events)
             MotionEvent.BUTTON_BACK
-                .checkButtonState(state, buttonState, events)
+                .checkButtonState(buttonState, state, events)
         }
         if (android.os.Build.VERSION.SDK_INT >= 23) {
             MotionEvent.BUTTON_STYLUS_PRIMARY
-                .checkButtonState(state, buttonState, events)
+                .checkButtonState(buttonState, state, events)
             MotionEvent.BUTTON_STYLUS_SECONDARY
-                .checkButtonState(state, buttonState, events)
+                .checkButtonState(buttonState, state, events)
         }
+        buttonState = state
     }
 
     internal fun addTypeEvent(
