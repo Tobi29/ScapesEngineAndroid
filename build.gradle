@@ -61,7 +61,7 @@ ext {
     slf4jVersion = "1.7.25"
     slf4jJVM = { module -> "org.slf4j:$module:$slf4jVersion" }
 
-    scapesEngineVersion = "4036cee723"
+    scapesEngineVersion = "f4c9168624"
     scapesEngine = { module ->
         "com.github.Tobi29.ScapesEngine:${module}:$scapesEngineVersion"
     }
