@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 
-include "android-backend"
-include "tag-parcel"
-include "sqlite"
-include "profiler-systrace"
-include "gles-backend"
-include "openal-android"
+package org.tobi29.scapes.engine.android.profiler
+
+import org.tobi29.profiler.spi.ProfilerDispatcherProvider
+
+class SysTraceProfilerDispatcherProvider : ProfilerDispatcherProvider {
+    override fun dispatcher() = if (android.os.Build.VERSION.SDK_INT >= 18) {
+        SysTraceProfilerDispatcher
+    } else null
+}

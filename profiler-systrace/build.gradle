@@ -14,9 +14,16 @@
  * limitations under the License.
  */
 
-include "android-backend"
-include "tag-parcel"
-include "sqlite"
-include "profiler-systrace"
-include "gles-backend"
-include "openal-android"
+apply from: "$rootDir/resources/modulekotlinandroid.gradle"
+
+android {
+    defaultConfig {
+        minSdkVersion 9
+        consumerProguardFiles "proguard-rules.pro"
+    }
+}
+
+dependencies {
+    implementation rootProject.kotlinJVM("kotlin-stdlib")
+    implementation rootProject.ext.scapesEngineJVM("profiler")
+}

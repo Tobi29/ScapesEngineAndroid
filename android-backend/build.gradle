@@ -1,0 +1,45 @@
+/*
+ * Copyright 2012-2018 Tobi29
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+apply from: "$rootDir/resources/modulekotlinandroid.gradle"
+
+android {
+    defaultConfig {
+        minSdkVersion 18
+        consumerProguardFiles "proguard-rules.pro"
+    }
+}
+
+dependencies {
+    expectedBy project(":gles-backend")
+
+    implementation rootProject.kotlinJVM("kotlin-stdlib")
+    implementation rootProject.scapesEngineJVM("stdex")
+    implementation rootProject.scapesEngineJVM("arrays")
+    implementation rootProject.scapesEngineJVM("math")
+    implementation rootProject.scapesEngineJVM("tag")
+    implementation rootProject.scapesEngineJVM("utils")
+    implementation rootProject.scapesEngineJVM("graphics-utils")
+    implementation rootProject.scapesEngineJVM("io")
+    implementation rootProject.scapesEngineJVM("logging")
+    implementation rootProject.scapesEngineJVM("engine")
+    implementation rootProject.scapesEngineJVM("shader-compiler")
+    implementation rootProject.scapesEngineJVM("coroutines")
+    implementation rootProject.scapesEngineJVM("filesystem")
+    implementation rootProject.scapesEngineJVM("openal-sounds")
+    
+    implementation project(":openal-android")
+}

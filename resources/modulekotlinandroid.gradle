@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2017 Tobi29
+ * Copyright 2012-2018 Tobi29
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,10 +20,10 @@ apply plugin: "kotlin-platform-android"
 apply plugin: "digital.wup.android-maven-publish"
 
 android {
-    compileSdkVersion = 27
+    compileSdkVersion = 28
 
     defaultConfig {
-        targetSdkVersion 27
+        targetSdkVersion 28
         versionCode = 1
         versionName = version
     }

@@ -1,4 +1,4 @@
-[submodule "OpenAL/ext/openal-soft"]
-    path = OpenAL/ext/openal-soft
-    url = https://github.com/Tobi29/openal-soft
-    branch = master
+[submodule "openal-android/ext/openal-soft"]
+	path = openal-android/ext/openal-soft
+	url = https://github.com/Tobi29/openal-soft
+	branch = master

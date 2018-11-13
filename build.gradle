@@ -15,10 +15,10 @@
  */
 
 buildscript {
-    def kotlinVersion = "1.2.31"
-    def dokkaVersion = "0.9.16"
-    def androidBuildVersion = "3.1.0"
-    def androidMavenVersion = "3.3.0"
+    def kotlinVersion = "1.2.71"
+    def dokkaVersion = "0.9.17"
+    def androidBuildVersion = "3.2.1"
+    def androidMavenPublishVersion = "3.6.2"
 
     repositories {
         jcenter()
@@ -35,7 +35,7 @@ buildscript {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
         classpath "org.jetbrains.dokka:dokka-gradle-plugin:$dokkaVersion"
         classpath "com.android.tools.build:gradle:$androidBuildVersion"
-        classpath "digital.wup:android-maven-publish:$androidMavenVersion"
+        classpath "digital.wup:android-maven-publish:$androidMavenPublishVersion"
     }
 }
 
@@ -49,21 +49,31 @@ allprojects {
             url "https://jitpack.io"
         }
     }
-}
 
-task wrapper(type: Wrapper) {
-    gradleVersion = "4.6"
-    distributionUrl =
-            "https://services.gradle.org/distributions/gradle-${gradleVersion}-all.zip"
+    afterEvaluate {
+        def kotlin = extensions.findByName("kotlin")
+        if (kotlin != null) {
+            kotlin.experimental {
+                coroutines "enable"
+            }
+        }
+    }
 }
 
 ext {
+    kotlinVersion = "1.2.71"
+    kotlinBase = { module -> "org.jetbrains.kotlin:$module:$kotlinVersion" }
+    kotlin = { module -> kotlinBase("$module-common") }
+    kotlinJVM = { module -> kotlinBase("$module") }
+    kotlinJS = { module -> kotlinBase("$module-js") }
+
     slf4jVersion = "1.7.25"
     slf4jJVM = { module -> "org.slf4j:$module:$slf4jVersion" }
 
-    scapesEngineVersion = "f4c9168624"
-    scapesEngine = { module ->
+    scapesEngineVersion = "eb38dd8c91"
+    scapesEngineBase = { module ->
         "com.github.Tobi29.ScapesEngine:${module}:$scapesEngineVersion"
     }
-    scapesEngineJVM = { module -> scapesEngine("${module}JVM") }
+    scapesEngine = { module -> scapesEngineBase("${module}-metadata") }
+    scapesEngineJVM = { module -> scapesEngineBase("${module}-jvm") }
 }
