@@ -24,8 +24,8 @@ import android.os.Handler
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import kotlinx.coroutines.experimental.Dispatchers
-import kotlinx.coroutines.experimental.runBlocking
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import org.tobi29.io.filesystem.FileCache
 import org.tobi29.io.tag.MutableTagMap
 import org.tobi29.scapes.engine.ScapesEngine

@@ -15,7 +15,7 @@
  */
 
 buildscript {
-    def kotlinVersion = "1.2.71"
+    def kotlinVersion = "1.3.10"
     def dokkaVersion = "0.9.17"
     def androidBuildVersion = "3.2.1"
     def androidMavenPublishVersion = "3.6.2"
@@ -23,12 +23,6 @@ buildscript {
     repositories {
         jcenter()
         google()
-        maven {
-            url "https://dl.bintray.com/kotlin/kotlin-dev"
-        }
-        maven {
-            url "https://jitpack.io"
-        }
     }
 
     dependencies {
@@ -46,22 +40,16 @@ allprojects {
         jcenter()
         google()
         maven {
-            url "https://jitpack.io"
+            url "https://dl.bintray.com/gitout/scapes-engine"
         }
-    }
-
-    afterEvaluate {
-        def kotlin = extensions.findByName("kotlin")
-        if (kotlin != null) {
-            kotlin.experimental {
-                coroutines "enable"
-            }
+        maven {
+            url "https://jitpack.io"
         }
     }
 }
 
 ext {
-    kotlinVersion = "1.2.71"
+    kotlinVersion = "1.3.10"
     kotlinBase = { module -> "org.jetbrains.kotlin:$module:$kotlinVersion" }
     kotlin = { module -> kotlinBase("$module-common") }
     kotlinJVM = { module -> kotlinBase("$module") }
@@ -70,10 +58,11 @@ ext {
     slf4jVersion = "1.7.25"
     slf4jJVM = { module -> "org.slf4j:$module:$slf4jVersion" }
 
-    scapesEngineVersion = "eb38dd8c91"
+    scapesEngineVersion = "aff746f20913a18046bd98523cbe687109ef56af"
     scapesEngineBase = { module ->
-        "com.github.Tobi29.ScapesEngine:${module}:$scapesEngineVersion"
+        "net.gitout.scapes-engine:${module}:$scapesEngineVersion"
     }
     scapesEngine = { module -> scapesEngineBase("${module}-metadata") }
+    scapesEngineJS = { module -> scapesEngineBase("${module}-js") }
     scapesEngineJVM = { module -> scapesEngineBase("${module}-jvm") }
 }
