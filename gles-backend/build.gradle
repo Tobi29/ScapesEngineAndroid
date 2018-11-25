@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-apply from: "$rootDir/resources/modulekotlin.gradle"
+apply from: rootProject.file("gradle/module-kotlin.gradle")
+apply from: rootProject.file("gradle/publish-maven.gradle")
 
 dependencies {
     implementation rootProject.kotlin("kotlin-stdlib")

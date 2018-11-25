@@ -14,29 +14,25 @@
  * limitations under the License.
  */
 
-apply from: rootProject.file("gradle/module-kotlin-android.gradle")
-apply from: rootProject.file("gradle/publish-maven.gradle")
+apply from: rootProject.file("gradle/build-gitlab.gradle")
+apply plugin: "maven-publish"
 
-android {
-    defaultConfig {
-        minSdkVersion 9
+if (extensions.findByName("android") != null) {
+    apply plugin: "digital.wup.android-maven-publish"
+    publishing {
+        publications {
+            mavenAar(MavenPublication) {
+                from components.android
+            }
+            mavenJava(MavenPublication) {
+                from components.android
 
-        externalNativeBuild {
-            cmake {
-                arguments "-DALSOFT_UTILS=off"
-                arguments "-DALSOFT_EXAMPLES=off"
-                arguments "-DALSOFT_TESTS=off"
+                artifact sourcesJar {
+                    classifier "sources"
+                }
             }
         }
     }
-
-    externalNativeBuild {
-        cmake {
-            path "ext/openal-soft/CMakeLists.txt"
-        }
-    }
 }
 
-dependencies {
-    implementation rootProject.kotlinJVM("kotlin-stdlib")
-}
+apply from: rootProject.file("gradle/publish-bintray.gradle")

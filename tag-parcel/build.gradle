@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-apply from: "$rootDir/resources/modulekotlinandroid.gradle"
+apply from: rootProject.file("gradle/module-kotlin-android.gradle")
+apply from: rootProject.file("gradle/publish-maven.gradle")
 
 android {
     defaultConfig {

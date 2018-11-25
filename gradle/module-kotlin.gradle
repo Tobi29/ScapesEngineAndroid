@@ -14,29 +14,18 @@
  * limitations under the License.
  */
 
-apply from: rootProject.file("gradle/module-kotlin-android.gradle")
-apply from: rootProject.file("gradle/publish-maven.gradle")
+apply plugin: "kotlin-platform-common"
 
-android {
-    defaultConfig {
-        minSdkVersion 9
-
-        externalNativeBuild {
-            cmake {
-                arguments "-DALSOFT_UTILS=off"
-                arguments "-DALSOFT_EXAMPLES=off"
-                arguments "-DALSOFT_TESTS=off"
-            }
-        }
-    }
-
-    externalNativeBuild {
-        cmake {
-            path "ext/openal-soft/CMakeLists.txt"
-        }
-    }
+configurations {
+    sources
 }
 
-dependencies {
-    implementation rootProject.kotlinJVM("kotlin-stdlib")
+task sourcesJar(type: Jar) {
+    classifier = "sources"
+    from sourceSets.main.allSource
+}
+
+artifacts {
+    archives sourcesJar
+    sources sourcesJar
 }

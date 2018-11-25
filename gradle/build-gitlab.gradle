@@ -14,25 +14,16 @@
  * limitations under the License.
  */
 
-apply plugin: "kotlin-platform-common"
-apply plugin: "maven"
-apply plugin: "org.jetbrains.dokka"
-apply plugin: "eclipse"
-
-configurations {
-    sources
+if (group == "scapes-engine-android" || group == "ScapesEngineAndroid") {
+    group = "net.gitout.scapes-engine-android"
 }
 
-task sourcesJar(type: Jar) {
-    classifier = "sources"
-    from sourceSets.main.allSource
-}
-
-artifacts {
-    archives sourcesJar
-    sources sourcesJar
-}
-
-eclipse.project {
-    natures "org.jetbrains.kotlin.core.kotlinNature"
+if (version == "unspecified") {
+    def tag = System.getenv("CI_COMMIT_TAG")
+    def commit = System.getenv("CI_COMMIT_SHA")
+    def ref = System.getenv("CI_COMMIT_REF_NAME")
+    version = tag ?: commit
+    if (ref != tag && ref != "master") {
+        version = "$ref-$version"
+    }
 }

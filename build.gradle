@@ -34,8 +34,6 @@ buildscript {
 }
 
 allprojects {
-    group = "com.github.Tobi29.ScapesEngineAndroid"
-
     repositories {
         jcenter()
         google()
