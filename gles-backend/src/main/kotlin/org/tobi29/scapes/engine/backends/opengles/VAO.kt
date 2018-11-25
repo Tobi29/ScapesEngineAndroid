@@ -91,21 +91,21 @@ internal abstract class VAO(protected val glh: GLESHandle) : Model {
         if (uniformLocation != GLUniform_EMPTY) {
             glh.glUniformMatrix4fv(
                 uniformLocation, false,
-                matrix.modelView().values
+                matrix.modelViewMatrix.array.array
             )
         }
         uniformLocation = shader.uniformLocation(1)
         if (uniformLocation != GLUniform_EMPTY) {
             glh.glUniformMatrix4fv(
                 uniformLocation, false,
-                matrix.modelViewProjection().values
+                matrix.modelViewProjectionMatrix.array.array
             )
         }
         uniformLocation = shader.uniformLocation(2)
         if (uniformLocation != GLUniform_EMPTY) {
             glh.glUniformMatrix3fv(
                 uniformLocation, false,
-                matrix.normal().values
+                matrix.normalMatrix.array.array
             )
         }
     }
