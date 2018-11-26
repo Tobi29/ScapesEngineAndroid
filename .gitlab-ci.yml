@@ -1,6 +1,7 @@
 image: mingc/android-build-box
 
 variables:
+    GIT_SUBMODULE_STRATEGY: "recursive"
     GRADLE_OPTS: "-Dorg.gradle.daemon=false"
 
 before_script:
